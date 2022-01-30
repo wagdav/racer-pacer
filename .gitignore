@@ -16,3 +16,5 @@ pom.xml.asc
 
 resources/public/js/out
 resources/public/js/racer_pacer.js
+build
+result

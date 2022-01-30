@@ -1,0 +1,10 @@
+{:paths ["src/racer_pacer" "resources"]
+ :deps {org.clojure/clojurescript {:mvn/version "1.10.758"}}
+
+ :aliases
+ {:prod
+  {:main-opts ["-m" "cljs.main" "-co" "prod.cljs.edn" "-c" "myapp.core"]}
+
+  :figwheel
+  {:extra-deps {com.bhauman/figwheel-main {:mvn/version "0.2.12"}}
+   :main-opts ["-m" "figwheel.main" "-b" "dev" "-r"]}}}

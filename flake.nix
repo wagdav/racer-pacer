@@ -3,17 +3,22 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-21.05";
+    flake-compat = {
+      url = github:edolstra/flake-compat;
+      flake = false;
+    };
     flake-utils.url = "github:numtide/flake-utils";
     clj2nix = {
       url = "github:hlolli/clj2nix";
       inputs = {
         nixpkgs.follows = "nixpkgs";
+        flake-compat.follows = "flake-compat";
         flake-utils.follows = "flake-utils";
       };
     };
   };
 
-  outputs = { self, nixpkgs, flake-utils, clj2nix }:
+  outputs = { self, nixpkgs, flake-utils, flake-compat, clj2nix }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
@@ -49,9 +54,10 @@
       {
         devShell = pkgs.mkShell {
           buildInputs = with pkgs; [
-            clojure
-            clj-kondo
             clj2nix.defaultPackage.${system}
+            clj-kondo
+            clojure
+            ghp-import
           ];
         };
 

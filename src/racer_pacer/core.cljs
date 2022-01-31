@@ -22,7 +22,7 @@
         seconds (- secs (* hours 3600) (* minutes 60))]
     {:hours hours
      :minutes minutes
-     :seconds (rem secs 60)}))
+     :seconds seconds}))
 
 (defn show-pace [secs]
   (let [p (seconds->pace secs)]

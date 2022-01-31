@@ -41,12 +41,13 @@
           installPhase = ''
             export HOME=$PWD
 
-            mkdir -p $out/js
+            mkdir -p $out/js $out/css
 
             clojure -Scp ${classpath}:src -M:prod
 
             cp build/js/racer_pacer.js $out/js
             cp resources/public/index.html $out
+            cp resources/public/css/*.css $out/css
           '';
         };
 

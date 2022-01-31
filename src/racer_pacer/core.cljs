@@ -3,15 +3,17 @@
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [goog.string :as gstring]
-            [goog.string.format]))
+            [goog.string.format]
+            [clojure.spec.alpha :as s]))
 
-;(def pace-data (r/atom {:minutes 4 :seconds 5}))
+;(require '[clojure.spec.alpha :as s])
+(s/def :pace/min-per-km (s/and string? #(re-matches #"[1-5]?[0-9]:[0-5][0-9]" %)))
+
 (defonce pace-data (r/atom 275))
 
 (def marathon 42.195)
 (def half-marathon 21.0975)
-
-(def splits [1 5 10 15 20 half-marathon 30 35  40 marathon])
+(def splits [1 5 10 15 20 half-marathon 30 35 40 marathon])
 
 (def annotations {half-marathon {:name "Half marathon"
                                  :url "https://en.wikipedia.org/wiki/Half_marathon"}
@@ -19,6 +21,12 @@
                   10 {:url "https://en.wikipedia.org/wiki/10K_run"}
                   marathon {:name "Marathon"
                             :url "https://en.wikipedia.org/wiki/Marathon"}})
+
+(defn parse-pace [t]
+  (when (s/valid? :pace/min-per-km t)
+    (let [[minutes seconds] (clojure.string/split t #":")]
+      {:minutes (js/parseInt minutes)
+       :seconds (js/parseInt seconds)})))
 
 (defn seconds->pace [secs]
   (let [hours (quot secs 3600)
@@ -28,6 +36,9 @@
      :minutes minutes
      :seconds seconds}))
 
+(defn pace->seconds [{:keys [minutes seconds]}]
+  (+ seconds (* 60 minutes)))
+
 (defn show-pace [secs]
   (let [p (seconds->pace secs)]
     (gstring/format "%2d:%02d" (:minutes p) (:seconds p))))
@@ -36,19 +47,12 @@
   (let [p (seconds->pace secs)]
     (gstring/format "%d:%02d:%02d" (:hours p) (:minutes p) (:seconds p))))
 
-(defn pace->seconds [{:keys [minutes seconds]}]
-  (+ seconds (* 60 minutes)))
-
-(defn parse-input [text]
-  (let [[_ minutes seconds] (re-find #"^(\d):(\d\d)$" text)]
-    (and minutes seconds {:minutes (js/parseInt minutes) :seconds (js/parseInt seconds)})))
-
 (defn pace-input []
   (let [new-pace (r/atom "4:35")]
     (fn []
       [:form {:on-submit (fn [e]
                            (.preventDefault e)
-                           (when-let [new-value (parse-input @new-pace)]
+                           (when-let [new-value (parse-pace @new-pace)]
                              (reset! pace-data (pace->seconds new-value))))}
         [:input {:type "text" :value @new-pace
                  :on-change (fn [e]

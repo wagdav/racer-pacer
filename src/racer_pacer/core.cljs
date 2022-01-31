@@ -8,13 +8,17 @@
 ;(def pace-data (r/atom {:minutes 4 :seconds 5}))
 (defonce pace-data (r/atom 275))
 
-(def events
-  [{:distance/km 5}
-   {:distance/km 10}
-   {:distance/km 21.0975
-    :name "Half marathon"}
-   {:distance/km 42.195
-    :name "Marathon"}])
+(def marathon 42.195)
+(def half-marathon 21.0975)
+
+(def splits [1 5 10 15 20 half-marathon 30 35  40 marathon])
+
+(def annotations {half-marathon {:name "Half marathon"
+                                 :url "https://en.wikipedia.org/wiki/Half_marathon"}
+                  5 {:url "https://en.wikipedia.org/wiki/5K_run"}
+                  10 {:url "https://en.wikipedia.org/wiki/10K_run"}
+                  marathon {:name "Marathon"
+                            :url "https://en.wikipedia.org/wiki/Marathon"}})
 
 (defn seconds->pace [secs]
   (let [hours (quot secs 3600)
@@ -35,32 +39,49 @@
 (defn pace->seconds [{:keys [minutes seconds]}]
   (+ seconds (* 60 minutes)))
 
+(defn parse-input [text]
+  (let [[_ minutes seconds] (re-find #"^(\d):(\d\d)$" text)]
+    (and minutes seconds {:minutes (js/parseInt minutes) :seconds (js/parseInt seconds)})))
+
+(defn pace-input []
+  (let [new-pace (r/atom "4:35")]
+    (fn []
+      [:form {:on-submit (fn [e]
+                           (.preventDefault e)
+                           (when-let [new-value (parse-input @new-pace)]
+                             (reset! pace-data (pace->seconds new-value))))}
+        [:input {:type "text" :value @new-pace
+                 :on-change (fn [e]
+                               (reset! new-pace (.. e -target -value)))}]])))
+
+
 (defn pace-slider [value min-value max-value]
   [:div
-    [:label (str "Pace: " (show-pace value) " min/km")]
-    [:input {:type "range" :value value :min min-value :max max-value
-             :style {:width "100%"}
-             :on-change (fn [e]
-                          (let [new-value (js/parseInt (.. e -target -value))]
-                            (reset! pace-data new-value)))}]])
+    [:p
+     "Splits for a reference pace of "
+     [pace-input]
+     "minutes per kilometer:"]])
 
-(defn finish-times [pace]
+(defn split-times [pace]
   [:table
    [:thead
-     [:tr
-      [:th "Distance"]
-      [:th "Finish"]]]
+    [:tr
+      [:th "Km"]
+      [:th "⏰"]]]
    [:tbody
-    (for [event events]
-      ^{:key event}
+    (for [split splits]
+      ^{:key split}
       [:tr
-        [:td (str (:distance/km event) "km")]
-        [:td (show-time (* (:distance/km event) pace))]])]])
+         (if-let [url (get-in annotations [split :url])]
+            [:td [:a {:href url} (get-in annotations [split :name] split)]]
+            [:td (get-in annotations [split :name] split)])
+        [:td (show-time (* split pace))]])]])
 
 (defn main []
   [:div
+    [:h1 "Splits"]
     [pace-slider @pace-data 180 360]
-    [finish-times @pace-data]])
+    [split-times @pace-data]])
 
 (defn get-app-element []
   (gdom/getElement "app"))

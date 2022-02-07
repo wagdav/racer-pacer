@@ -56,6 +56,60 @@
            (reset! data new-value)))}]
      "minutes per kilometer:"]])
 
+(defn mouse-move [start step pace]
+  (fn [e]
+    (let [dx (- (.-clientX e) (@start :x))
+          new-pace (-> (@start :value)
+                       pace->seconds
+                       (+ (* dx step 0.5))
+                       (/ step)
+                       (#(.round js/Math %))
+                       (* step)
+                       seconds->pace)]
+      (reset! pace new-pace))))
+
+(defn touch-move [start step pace]
+  (fn [e]
+    (let [touches (.-changedTouches e)
+          dx (- (.-clientX (first touches)) (@start :x))
+          new-pace (-> (@start :value)
+                       pace->seconds
+                       (+ (* dx step 0.5))
+                       (/ step)
+                       (#(.round js/Math %))
+                       (* step)
+                       seconds->pace)]
+      (reset! pace new-pace))))
+
+(defn adjustable-split [pace distance-km]
+  (let [start (r/atom {})
+        step 1]
+
+    (fn [pace distance-km]
+      [:span
+       {:on-mouse-down
+        (fn [e]
+          (.preventDefault e)
+          (swap! start assoc :value @pace
+                             :x (.-clientX e))
+          (let [document (.. e -target -ownerDocument)
+                handler (mouse-move start step pace)]
+            (.addEventListener document "mousemove" handler)
+            (.addEventListener document "mouseup" #(.removeEventListener document "mousemove" handler))))
+
+        :on-touch-start
+        (fn [e]
+          (.preventDefault e)
+          (swap! start assoc :value @pace
+                             :x (.-clientX (first (.-changedTouches e))))
+          (let [document (.. e -target -ownerDocument)
+                handler (touch-move start step pace)]
+            (.addEventListener document "touchmove" handler)
+            (.addEventListener document "touchend" #(.removeEventListener document "touchmove" handler))
+            (.addEventListener document "touchcancel" #(.removeEventListener document "touchmove" handler))))}
+
+       (show-time (* distance-km (pace->seconds @pace)))])))
+
 (defn split-times [pace]
   [:table
    [:thead
@@ -63,14 +117,13 @@
       [:th "Km"]
       [:th "Split"]]]
    [:tbody
-    (let [seconds (pace->seconds @pace)]
-      (for [split splits]
-        ^{:key split}
-        [:tr
-           (if-let [url (get-in annotations [split :url])]
-              [:td [:a {:href url} (get-in annotations [split :name] split)]]
-              [:td (get-in annotations [split :name] split)])
-          [:td (show-time (* split seconds))]]))]])
+    (for [split splits]
+      ^{:key split}
+      [:tr
+        (if-let [url (get-in annotations [split :url])]
+          [:td [:a {:href url} (get-in annotations [split :name] split)]]
+          [:td (get-in annotations [split :name] split)])
+        [:td [adjustable-split pace split]]])]])
 
 (defonce pace-data (r/atom (parse-pace "4:35")))
 

@@ -6,10 +6,7 @@
             [goog.string.format]
             [clojure.spec.alpha :as s]))
 
-;(require '[clojure.spec.alpha :as s])
 (s/def :pace/min-per-km (s/and string? #(re-matches #"[1-5]?[0-9]:[0-5][0-9]" %)))
-
-(defonce pace-data (r/atom 275))
 
 (def marathon 42.195)
 (def half-marathon 21.0975)
@@ -39,31 +36,24 @@
 (defn pace->seconds [{:keys [minutes seconds]}]
   (+ seconds (* 60 minutes)))
 
-(defn show-pace [secs]
-  (let [p (seconds->pace secs)]
-    (gstring/format "%2d:%02d" (:minutes p) (:seconds p))))
+(defn show-pace [p]
+  (gstring/format "%d:%02d" (:minutes p) (:seconds p)))
 
 (defn show-time [secs]
   (let [p (seconds->pace secs)]
     (gstring/format "%d:%02d:%02d" (:hours p) (:minutes p) (:seconds p))))
 
-(defn pace-input []
-  (let [new-pace (r/atom "4:35")]
-    (fn []
-      [:form {:on-submit (fn [e]
-                           (.preventDefault e)
-                           (when-let [new-value (parse-pace @new-pace)]
-                             (reset! pace-data (pace->seconds new-value))))}
-        [:input {:type "text" :value @new-pace
-                 :on-change (fn [e]
-                               (reset! new-pace (.. e -target -value)))}]])))
-
-
-(defn pace-slider [value min-value max-value]
+(defn pace-input [data]
   [:div
     [:p
      "Splits for a reference pace of "
-     [pace-input]
+     [:input.pace
+      {:type "text"
+       :defaultValue (show-pace @data)
+       :on-change
+       (fn [event]
+         (when-let [new-value (parse-pace (.. event -target -value))]
+           (reset! data new-value)))}]
      "minutes per kilometer:"]])
 
 (defn split-times [pace]
@@ -71,21 +61,23 @@
    [:thead
     [:tr
       [:th "Km"]
-      [:th "⏰"]]]
+      [:th "Split"]]]
    [:tbody
-    (for [split splits]
-      ^{:key split}
-      [:tr
-         (if-let [url (get-in annotations [split :url])]
-            [:td [:a {:href url} (get-in annotations [split :name] split)]]
-            [:td (get-in annotations [split :name] split)])
-        [:td (show-time (* split pace))]])]])
+    (let [seconds (pace->seconds @pace)]
+      (for [split splits]
+        ^{:key split}
+        [:tr
+           (if-let [url (get-in annotations [split :url])]
+              [:td [:a {:href url} (get-in annotations [split :name] split)]]
+              [:td (get-in annotations [split :name] split)])
+          [:td (show-time (* split seconds))]]))]])
+
+(defonce pace-data (r/atom (parse-pace "4:35")))
 
 (defn main []
   [:div
-    [:h1 "Splits"]
-    [pace-slider @pace-data 180 360]
-    [split-times @pace-data]])
+    [pace-input pace-data]
+    [split-times pace-data]])
 
 (defn get-app-element []
   (gdom/getElement "app"))

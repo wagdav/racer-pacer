@@ -12,6 +12,10 @@ h1, h2, h3 {
   line-height: 1.2
 }
 
+input.pace {
+    width: 4em;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;

@@ -61,7 +61,7 @@
     (let [dx (- (.-clientX e) (@start :x))
           new-pace (-> (@start :value)
                        pace->seconds
-                       (+ (* dx step 0.5))
+                       (+ (* dx step 0.2))
                        (/ step)
                        (#(.round js/Math %))
                        (* step)
@@ -74,7 +74,7 @@
           dx (- (.-clientX (first touches)) (@start :x))
           new-pace (-> (@start :value)
                        pace->seconds
-                       (+ (* dx step 0.5))
+                       (+ (* dx step 0.2))
                        (/ step)
                        (#(.round js/Math %))
                        (* step)

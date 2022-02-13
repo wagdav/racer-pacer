@@ -56,30 +56,27 @@
            (reset! data new-value)))}]
      "minutes per kilometer:"]])
 
+(defn adjust [value dx step]
+  (-> value
+      pace->seconds
+      (+ (* dx step 0.2))
+      (/ step)
+      (#(.round js/Math %))
+      (* step)
+      seconds->pace))
+
 (defn mouse-move [start step pace]
   (fn [e]
     (let [dx (- (.-clientX e) (@start :x))
-          new-pace (-> (@start :value)
-                       pace->seconds
-                       (+ (* dx step 0.2))
-                       (/ step)
-                       (#(.round js/Math %))
-                       (* step)
-                       seconds->pace)]
-      (reset! pace new-pace))))
+          value (@start :value)]
+      (reset! pace (adjust value dx step)))))
 
 (defn touch-move [start step pace]
   (fn [e]
     (let [touches (.-changedTouches e)
           dx (- (.-clientX (first touches)) (@start :x))
-          new-pace (-> (@start :value)
-                       pace->seconds
-                       (+ (* dx step 0.2))
-                       (/ step)
-                       (#(.round js/Math %))
-                       (* step)
-                       seconds->pace)]
-      (reset! pace new-pace))))
+          value (@start :value)]
+      (reset! pace (adjust value dx step)))))
 
 (defn adjustable-split [pace distance-km]
   (let [start (r/atom {})

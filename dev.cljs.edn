@@ -1,8 +1,0 @@
-^{ ;;:css-dirs ["resources/public/css"]
-  :watch-dirs ["src/racer_pacer"]
-  :open-url-wait-ms 2000}
-{:main racer-pacer.core
- :output-to "resources/public/js/racer_pacer.js"
- :output-dir "resources/public/js/out"
- :asset-path "js/out"
- :optimizations :none}

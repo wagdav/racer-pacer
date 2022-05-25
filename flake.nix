@@ -19,6 +19,10 @@
   };
 
   outputs = { self, nixpkgs, flake-utils, flake-compat, clj2nix }:
+    let
+      version = "${nixpkgs.lib.substring 0 8 self.lastModifiedDate}.${self.shortRev or "dirty"}";
+    in
+
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
@@ -27,27 +31,32 @@
         classpath = clj-deps.makeClasspaths { };
 
         buildSite = pkgs.stdenv.mkDerivation {
-          name = "pacer-thewagner-net-${self.shortRev or "dirty"}";
+          name = "racer-pacer-${version}";
 
           buildInputs = [ pkgs.clojure ];
 
-          src = builtins.path {
-            path = ./.;
-            name = "src";
+          nodeModules = pkgs.mkYarnModules rec {
+            pname = "racer-pacer";
+            name = "racer-pacer-node-modules-${version}";
+            inherit version;
+            packageJSON = ./package.json;
+            yarnLock = ./yarn.lock;
           };
 
-          buildPhase = false;
+          src = self;
+
+          configurePhase = ''
+            ln -s $nodeModules/node_modules .
+          '';
+
+          buildPhase = ''
+            export HOME=$PWD
+            clojure -Scp ${classpath}:src/main -M:shadow-cljs release app
+          '';
 
           installPhase = ''
-            export HOME=$PWD
-
-            mkdir -p $out/js $out/css
-
-            clojure -Scp ${classpath}:src -M:prod
-
-            cp build/js/racer_pacer.js $out/js
-            cp resources/public/index.html $out
-            cp resources/public/css/*.css $out/css
+            mkdir $out
+            cp -r public/* $out
           '';
         };
 
@@ -59,6 +68,7 @@
             clj-kondo
             clojure
             ghp-import
+            yarn
           ];
         };
 

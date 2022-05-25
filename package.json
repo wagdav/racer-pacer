@@ -1,0 +1,24 @@
+{
+  "name": "racer-pacer",
+  "version": "1.0.0",
+  "description": "Race pace calculator in ClojureScript.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wagdav/racer-pacer.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/wagdav/racer-pacer/issues"
+  },
+  "homepage": "https://github.com/wagdav/racer-pacer#readme",
+  "dependencies": {
+    "create-react-class": "^15.7.0",
+    "react": "^18.1.0",
+    "react-dom": "^18.1.0"
+  }
+}

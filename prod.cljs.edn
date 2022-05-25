@@ -1,5 +1,0 @@
-{:main racer-pacer.core
- :output-to "build/js/racer_pacer.js"
- :output-dir "build/js/out"
- :asset-path "js/out"
- :optimizations :advanced}

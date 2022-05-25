@@ -134,7 +134,7 @@
 (defn mount []
   (rdom/render [main] (gdom/getElement "app")))
 
-(defn ^:after-load on-reload []
+(defn ^:dev/after-load on-reload []
   (mount))
 
 (defonce startup (do (mount) true))

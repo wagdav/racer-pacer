@@ -14,7 +14,10 @@ pom.xml.asc
 .nrepl-port
 .cpcache/
 
-resources/public/js/out
-resources/public/js/racer_pacer.js
-build
+# Nix
 result
+
+# shadow-cljs
+node_modules
+public/js
+.shadow-cljs

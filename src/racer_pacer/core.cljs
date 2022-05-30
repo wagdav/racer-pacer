@@ -49,21 +49,23 @@
      "Splits for a reference pace of "
      [:input.pace
       {:type "text"
-       :defaultValue (show-pace @data)
+       :value @data
        :on-change
        (fn [event]
-         (when-let [new-value (parse-pace (.. event -target -value))]
-           (reset! data new-value)))}]
+         (reset! data (.. event -target -value)))}]
      "minutes per kilometer:"]])
 
 (defn adjust [value dx step]
-  (-> value
-      pace->seconds
-      (+ (* dx step 0.2))
-      (/ step)
-      (#(.round js/Math %))
-      (* step)
-      seconds->pace))
+  (if-let [pace (parse-pace value)]
+    (-> pace
+        pace->seconds
+        (+ (* dx step 0.2))
+        (/ step)
+        (#(.round js/Math %))
+        (* step)
+        seconds->pace
+        show-pace)
+    value))
 
 (defn mouse-move [start step pace]
   (fn [e]
@@ -105,7 +107,7 @@
             (.addEventListener document "touchend" #(.removeEventListener document "touchmove" handler))
             (.addEventListener document "touchcancel" #(.removeEventListener document "touchmove" handler))))}
 
-       (show-time (* distance-km (pace->seconds @pace)))])))
+       (show-time (* distance-km (pace->seconds (parse-pace @pace))))])))
 
 (defn split-times [pace]
   [:table
@@ -122,7 +124,7 @@
           [:td (get-in annotations [split :name] split)])
         [:td [adjustable-split pace split]]])]])
 
-(defonce pace-data (r/atom (parse-pace "4:35")))
+(defonce pace-data (r/atom "4:35"))
 
 (defn main []
   [:div

@@ -113,7 +113,7 @@
    [:p.help "Reference pace in (min/km)"]])
 
 (defn split-times [pace]
-  [:table.table.is-striped
+  [:table.table.is-striped.is-fullwidth
    [:thead
     [:tr
       [:th "Km"]

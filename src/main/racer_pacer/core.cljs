@@ -19,6 +19,8 @@
                   marathon {:name "Marathon"
                             :url "https://en.wikipedia.org/wiki/Marathon"}})
 
+(defonce pace-data (r/atom "4:35"))
+
 (defn parse-pace [t]
   (when (s/valid? :pace/min-per-km t)
     (let [[minutes seconds] (clojure.string/split t #":")]
@@ -42,18 +44,6 @@
 (defn show-time [secs]
   (let [p (seconds->pace secs)]
     (gstring/format "%d:%02d:%02d" (:hours p) (:minutes p) (:seconds p))))
-
-(defn pace-input [data]
-  [:div
-    [:p
-     "Splits for a reference pace of "
-     [:input.pace
-      {:type "text"
-       :value @data
-       :on-change
-       (fn [event]
-         (reset! data (.. event -target -value)))}]
-     "minutes per kilometer:"]])
 
 (defn adjust [value dx step]
   (if-let [pace (parse-pace value)]
@@ -109,8 +99,21 @@
 
        (show-time (* distance-km (pace->seconds (parse-pace @pace))))])))
 
+; UI components
+(defn pace-input [data]
+  [:div.field
+   [:label.label "Pace"]
+   [:div.control
+     [:input.input
+      {:type "text"
+       :value @data
+       :on-change
+       (fn [event]
+         (reset! data (.. event -target -value)))}]]
+   [:p.help "Reference pace in (min/km)"]])
+
 (defn split-times [pace]
-  [:table
+  [:table.table.is-striped
    [:thead
     [:tr
       [:th "Km"]
@@ -124,12 +127,15 @@
           [:td (get-in annotations [split :name] split)])
         [:td [adjustable-split pace split]]])]])
 
-(defonce pace-data (r/atom "4:35"))
-
 (defn main []
   [:div
-    [pace-input pace-data]
-    [split-times pace-data]])
+    [:section.section
+      [:h1.title "Splits calculator"]
+      [:div.columns
+        [:div.column
+          [pace-input pace-data]]
+        [:div.column
+          [split-times pace-data]]]]])
 
 (defn mount []
   (rdom/render [main] (gdom/getElement "app")))

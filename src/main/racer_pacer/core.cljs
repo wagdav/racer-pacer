@@ -154,3 +154,10 @@
   (mount))
 
 (defonce startup (do (mount) true))
+
+(comment
+  ; Evaluate these lines to enter into a ClojureScript REPL
+  (require '[shadow.cljs.devtools.api :as shadow])
+  (shadow/repl :app)
+  ; Exit the CLJS session
+  :cljs/quit)

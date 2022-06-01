@@ -19,7 +19,7 @@
                   marathon {:name "Marathon"
                             :url "https://en.wikipedia.org/wiki/Marathon"}})
 
-(defonce pace-data (r/atom "4:35"))
+(def initial-pace {:minutes 4 :seconds 35})
 
 (defn parse-pace [t]
   (when (s/valid? :pace/min-per-km t)
@@ -46,71 +46,84 @@
     (gstring/format "%d:%02d:%02d" (:hours p) (:minutes p) (:seconds p))))
 
 (defn adjust [value dx step]
-  (if-let [pace (parse-pace value)]
-    (-> pace
-        pace->seconds
-        (+ (* dx step 0.2))
-        (/ step)
-        (#(.round js/Math %))
-        (* step)
-        seconds->pace
-        show-pace)
-    value))
+  (-> value
+      pace->seconds
+      (+ (* dx step 0.2))
+      (/ step)
+      (#(.round js/Math %))
+      (* step)
+      seconds->pace))
 
-(defn mouse-move [start step pace]
+(adjust {:minutes 4 :seconds 13} -100 1)
+
+(defn mouse-move [start step data]
   (fn [e]
     (let [dx (- (.-clientX e) (@start :x))
-          value (@start :value)]
-      (reset! pace (adjust value dx step)))))
+          value (@start :value)
+          new-pace (adjust value dx step)]
+      (swap! data assoc :raw (show-pace new-pace) :pace new-pace))))
 
-(defn touch-move [start step pace]
+(defn touch-move [start step data]
   (fn [e]
     (let [touches (.-changedTouches e)
           dx (- (.-clientX (first touches)) (@start :x))
-          value (@start :value)]
-      (reset! pace (adjust value dx step)))))
+          value (@start :value)
+          new-pace (adjust value dx step)]
+      (swap! data assoc :raw (show-pace new-pace) :pace new-pace))))
 
-(defn adjustable-split [pace distance-km]
-  (let [start (r/atom {})
+(defn adjustable-split [data distance-km]
+  (let [last-valid (r/atom (:pace @data))
+        start (r/atom {})
         step 1]
 
-    (fn [pace distance-km]
+    (fn [data distance-km]
+      ; Remember the last valid value
+      (when-let [p (:pace @data)]
+        (reset! last-valid p))
+
       [:span
        {:on-mouse-down
         (fn [e]
           (.preventDefault e)
-          (swap! start assoc :value @pace
+          (swap! start assoc :value (:pace @data)
                              :x (.-clientX e))
           (let [document (.. e -target -ownerDocument)
-                handler (mouse-move start step pace)]
+                handler (mouse-move start step data)]
             (.addEventListener document "mousemove" handler)
             (.addEventListener document "mouseup" #(.removeEventListener document "mousemove" handler))))
 
         :on-touch-start
         (fn [e]
           (.preventDefault e)
-          (swap! start assoc :value @pace
+          (swap! start assoc :value (:pace @data)
                              :x (.-clientX (first (.-changedTouches e))))
           (let [document (.. e -target -ownerDocument)
-                handler (touch-move start step pace)]
+                handler (touch-move start step data)]
             (.addEventListener document "touchmove" handler)
             (.addEventListener document "touchend" #(.removeEventListener document "touchmove" handler))
             (.addEventListener document "touchcancel" #(.removeEventListener document "touchmove" handler))))}
 
-       (show-time (* distance-km (pace->seconds (parse-pace @pace))))])))
+       (show-time (* distance-km (pace->seconds @last-valid)))])))
 
 ; UI components
-(defn pace-input [data]
-  [:div.field
-    [:label.label "Pace"]
-    [:div.control
-      [:input.input
-       {:type "text"
-        :value @data
-        :on-change
-        (fn [event]
-          (reset! data (.. event -target -value)))}]]
-    [:p.help "Reference pace in (min/km)"]])
+(defn pace-input [input]
+  (let [valid? (:pace @input)]
+    [:div.field
+      [:label.label "Pace"]
+      [:div.control
+        [(if valid? :input.input :input.input.is-danger)
+         {:type "text"
+          :value (:raw @input)
+          :placeholder (show-pace initial-pace)
+          :on-input
+          (fn [event]
+            (let [raw (.. event -target -value)
+                  pace (parse-pace raw)]
+              (reset! input (cond-> {:raw raw}
+                                    pace (assoc :pace pace)))))}]]
+      (if valid?
+        [:p.help "Reference pace (min/km)"]
+        [:p.help.is-danger "Should be minutes:seconds. For example 4:45."])]))
 
 (defn split-times [pace]
   [:table.table.is-striped.is-fullwidth
@@ -129,6 +142,9 @@
           [:abbr
            {:title "Drag to adjust"}
            [adjustable-split pace split]]]])]])
+
+(defonce pace-data (r/atom {:pace initial-pace
+                            :raw (show-pace initial-pace)}))
 
 (defn main []
   [:div

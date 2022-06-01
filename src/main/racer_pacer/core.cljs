@@ -102,15 +102,15 @@
 ; UI components
 (defn pace-input [data]
   [:div.field
-   [:label.label "Pace"]
-   [:div.control
-     [:input.input
-      {:type "text"
-       :value @data
-       :on-change
-       (fn [event]
-         (reset! data (.. event -target -value)))}]]
-   [:p.help "Reference pace in (min/km)"]])
+    [:label.label "Pace"]
+    [:div.control
+      [:input.input
+       {:type "text"
+        :value @data
+        :on-change
+        (fn [event]
+          (reset! data (.. event -target -value)))}]]
+    [:p.help "Reference pace in (min/km)"]])
 
 (defn split-times [pace]
   [:table.table.is-striped.is-fullwidth

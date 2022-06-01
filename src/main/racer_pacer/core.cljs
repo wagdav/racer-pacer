@@ -132,9 +132,10 @@
 (defonce pace-data (r/atom "4:35"))
 
 (defn main []
-  [:div.container
-    [pace-input pace-data]
-    [split-times pace-data]])
+  [:section
+    [:div.container
+      [pace-input pace-data]
+      [split-times pace-data]]])
 
 (defn mount []
   (rdom/render [main] (gdom/getElement "app")))

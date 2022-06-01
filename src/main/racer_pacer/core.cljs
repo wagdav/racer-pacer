@@ -138,7 +138,14 @@
         [:div.column
           [pace-input pace-data]]
         [:div.column
-          [split-times pace-data]]]]])
+          [split-times pace-data]]]]
+    [:footer.footer
+      [:div.content.has-text-centered
+        [:p
+          "This is an experiment written in "
+          [:a {:href "https://clojurescript.org"} "ClojureScript"] ". "
+          "The source code is available on "
+          [:a {:href "https://github.com/wagdav/racer-pacer"} "GitHub"] "."]]]])
 
 (defn mount []
   (rdom/render [main] (gdom/getElement "app")))

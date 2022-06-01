@@ -125,7 +125,10 @@
         (if-let [url (get-in annotations [split :url])]
           [:td [:a {:href url} (get-in annotations [split :name] split)]]
           [:td (get-in annotations [split :name] split)])
-        [:td [adjustable-split pace split]]])]])
+        [:td
+          [:abbr
+           {:title "Drag to adjust"}
+           [adjustable-split pace split]]]])]])
 
 (defn main []
   [:div

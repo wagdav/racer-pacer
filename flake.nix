@@ -65,7 +65,6 @@
         devShell = pkgs.mkShell {
           buildInputs = with pkgs; [
             clj2nix.defaultPackage.${system}
-            clj-kondo
             clojure
             ghp-import
             yarn

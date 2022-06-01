@@ -45,15 +45,19 @@
 
 (defn pace-input [data]
   [:div
-    [:p
-     "Splits for a reference pace of "
-     [:input.pace
-      {:type "text"
-       :value @data
-       :on-change
-       (fn [event]
-         (reset! data (.. event -target -value)))}]
-     "minutes per kilometer:"]])
+   {:class ["field" "is-horizontal"]}
+   [:div.field-label
+     [:label.label "Pace"]]
+   [:div.field-body
+     [:div.field
+       [:div.control
+         [:input.input
+          {:type "text"
+           :value @data
+           :on-change
+           (fn [event]
+             (reset! data (.. event -target -value)))}]]
+       [:p.help "Reference pace in (min/km)"]]]])
 
 (defn adjust [value dx step]
   (if-let [pace (parse-pace value)]
@@ -111,6 +115,7 @@
 
 (defn split-times [pace]
   [:table
+   {:class ["table" "is-striped"]}
    [:thead
     [:tr
       [:th "Km"]
@@ -127,7 +132,7 @@
 (defonce pace-data (r/atom "4:35"))
 
 (defn main []
-  [:div
+  [:div.container
     [pace-input pace-data]
     [split-times pace-data]])
 

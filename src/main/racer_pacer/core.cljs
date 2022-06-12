@@ -115,7 +115,7 @@
          {:type "text"
           :value (:raw @input)
           :placeholder (show-pace initial-pace)
-          :on-input
+          :on-change
           (fn [event]
             (let [raw (.. event -target -value)
                   pace (parse-pace raw)]

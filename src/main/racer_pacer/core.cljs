@@ -114,18 +114,19 @@
 (defn pace-input [input]
   (let [valid? (:pace @input)]
     [:div.field
-      [:label.label "Pace"]
-      [:div.control
-        [(if valid? :input.input :input.input.is-danger)
-         {:type "text"
-          :value (:raw @input)
-          :placeholder (show-pace initial-pace)
-          :on-change
-          (fn [event]
-            (let [raw (.. event -target -value)
-                  pace (parse-pace raw)]
-              (reset! input (cond-> {:raw raw}
-                                    pace (assoc :pace pace)))))}]]
+      [:label.label {:for "pace"} "Pace"]
+      [(if valid? :input.input :input.input.is-danger)
+       {:id "pace"
+        :type "text"
+        :tabindex 0
+        :value (:raw @input)
+        :placeholder (show-pace initial-pace)
+        :on-change
+        (fn [event]
+          (let [raw (.. event -target -value)
+                pace (parse-pace raw)]
+            (reset! input (cond-> {:raw raw}
+                                  pace (assoc :pace pace)))))}]
       (if valid?
         [:p.help "Reference pace (min/km)"]
         [:p.help.is-danger "Should be minutes:seconds. For example 4:45."])]))

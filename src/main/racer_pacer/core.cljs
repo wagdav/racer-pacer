@@ -8,16 +8,21 @@
 
 (s/def :pace/min-per-km (s/and string? #(re-matches #"[1-5]?[0-9]:[0-5][0-9]" %)))
 
-(def marathon 42.195)
-(def half-marathon 21.0975)
-(def splits [1 5 10 15 20 half-marathon 30 35 40 marathon])
-
-(def annotations {half-marathon {:name "Half marathon"
-                                 :url "https://en.wikipedia.org/wiki/Half_marathon"}
-                  5 {:url "https://en.wikipedia.org/wiki/5K_run"}
-                  10 {:url "https://en.wikipedia.org/wiki/10K_run"}
-                  marathon {:name "Marathon"
-                            :url "https://en.wikipedia.org/wiki/Marathon"}})
+(def splits
+  [{:km 1}
+   {:km 5}
+   {:km 10
+    :url "https://en.wikipedia.org/wiki/10K_run"}
+   {:km 15}
+   {:km 21.0975
+    :name "Half marathon"
+    :url "https://en.wikipedia.org/wiki/Half_marathon"}
+   {:km 30}
+   {:km 35}
+   {:km 40}
+   {:km 42.195
+    :name "Marathon"
+    :url "https://en.wikipedia.org/wiki/Marathon"}])
 
 (def initial-pace {:minutes 4 :seconds 35})
 
@@ -133,15 +138,15 @@
       [:th "Split"]]]
    [:tbody
     (for [split splits]
-      ^{:key split}
+      ^{:key (:km split)}
       [:tr
-        (if-let [url (get-in annotations [split :url])]
-          [:td [:a {:href url} (get-in annotations [split :name] split)]]
-          [:td (get-in annotations [split :name] split)])
+        (if-let [url (split :url)]
+          [:td [:a {:href url} (or (split :name) (split :km))]]
+          [:td (split :km)])
         [:td
           [:abbr
            {:title "Drag to adjust"}
-           [adjustable-split pace split]]]])]])
+           [adjustable-split pace (split :km)]]]])]])
 
 (defonce pace-data (r/atom {:pace initial-pace
                             :raw (show-pace initial-pace)}))

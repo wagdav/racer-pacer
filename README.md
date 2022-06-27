@@ -6,7 +6,7 @@ Race pace calculator in ClojureScript.
 
 Interactive development
 ```
-nix develop --command yarn build
+nix develop --command yarn install
 nix develop --command clj -M:shadow-cljs watch app
 ```
 

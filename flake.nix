@@ -62,7 +62,7 @@
 
       in
       {
-        devShell = pkgs.mkShell {
+        devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             clj2nix.defaultPackage.${system}
             clojure

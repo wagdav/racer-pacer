@@ -2,7 +2,7 @@
   description = "Racer Pacer";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-21.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-22.05";
     flake-compat = {
       url = github:edolstra/flake-compat;
       flake = false;

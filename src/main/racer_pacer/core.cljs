@@ -142,18 +142,16 @@
       ^{:key (:km split)}
       [:tr
         (if-let [url (split :url)]
-          [:td [:a {:href url} (or (split :name) (split :km))]]
+          [:td>a {:href url} (or (split :name) (split :km))]
           [:td (split :km)])
-        [:td
-          [:abbr
-           {:title "Drag to adjust"}
-           [adjustable-split pace (split :km)]]]])]])
+        [:td>abbr {:title "Drag to adjust"}
+          [adjustable-split pace (split :km)]]])]])
 
 (defonce pace-data (r/atom {:pace initial-pace
                             :raw (show-pace initial-pace)}))
 
 (defn main []
-  [:div
+  [:<>
     [:section.section
       [:h1.title "Splits calculator"]
       [:div.columns

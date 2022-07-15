@@ -14,6 +14,7 @@
    {:km 10
     :url "https://en.wikipedia.org/wiki/10K_run"}
    {:km 15}
+   {:km 20}
    {:km 21.0975
     :name "Half marathon"
     :url "https://en.wikipedia.org/wiki/Half_marathon"}

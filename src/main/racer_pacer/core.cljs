@@ -1,5 +1,6 @@
 (ns racer-pacer.core
-  (:require [goog.dom :as gdom]
+  (:require [cljs.core.async :refer [>! <! chan put! close! timeout]]
+            [goog.dom :as gdom]
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [goog.string :as gstring]
@@ -62,6 +63,10 @@
 
 (adjust {:minutes 4 :seconds 13} -100 1)
 
+; 1. Event stream processing
+; 2. Event stream coordination
+; 3. Interface representation)
+
 (defn mouse-move [start step data]
   (fn [e]
     (let [dx (- (.-clientX e) (@start :x))
@@ -76,6 +81,27 @@
           value (@start :value)
           new-pace (adjust value dx step)]
       (swap! data assoc :raw (show-pace new-pace) :pace new-pace))))
+
+; Process protocol
+;   [:start-drag [x y]]
+;   [:drag  [x y]]
+;   [:stop-drag]
+;   [:set value]
+
+(defn mouse-events [event]
+  (case (.-type event)
+    "mousedown"  [:start-drag (.-clientX event)]
+    "mousemove"  [:drag       (.-clientX event)]
+    "mouseup"    [:stop-drag]
+    event))
+
+(defn touch-events [event]
+  (case (.-type event)
+    "touchstart"  [:start-drag (.-clientX (first (.-changedTouches event)))]
+    "touchmove"   [:drag (.-clientX (first (.-changedTouches event)))]
+    "touchend"    [:stop-drag]
+    "touchcancel" [:stop-drag]
+    event))
 
 (defn adjustable-split [data distance-km]
   (let [last-valid (r/atom (:pace @data))

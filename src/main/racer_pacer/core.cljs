@@ -1,5 +1,5 @@
 (ns racer-pacer.core
-  (:require [cljs.core.async :refer [>! <! chan put! close! timeout]]
+  (:require [cljs.core.async :refer [go-loop >! <! chan put! take! close! timeout]]
             [goog.dom :as gdom]
             [reagent.core :as r]
             [reagent.dom :as rdom]
@@ -88,54 +88,90 @@
 ;   [:stop-drag]
 ;   [:set value]
 
-(defn mouse-events [event]
-  (case (.-type event)
-    "mousedown"  [:start-drag (.-clientX event)]
-    "mousemove"  [:drag       (.-clientX event)]
-    "mouseup"    [:stop-drag]
-    event))
+(def mouse-events
+   (map (fn [e]
+          ({"mousedown"  [:start-drag (.-clientX e)]
+            "mousemove"  [:drag       (.-clientX e)]
+            "mouseup"    [:stop-drag]}
+           (.-type e)))))
 
-(defn touch-events [event]
-  (case (.-type event)
-    "touchstart"  [:start-drag (.-clientX (first (.-changedTouches event)))]
-    "touchmove"   [:drag (.-clientX (first (.-changedTouches event)))]
-    "touchend"    [:stop-drag]
-    "touchcancel" [:stop-drag]
-    event))
+(def touch-events
+  (map (fn [e]
+         ({"touchstart"  [:start-drag (.-clientX (first (.-changedTouches e)))]
+           "touchmove"   [:drag (.-clientX (first (.-changedTouches e)))]
+           "touchend"    [:stop-drag]
+           "touchcancel" [:stop-drag]}
+          (.-type e)))))
+
+(defprotocol IAdjustable
+  (-get-value [element])
+  (-set-value [element value]))
+
+(extend-type reagent.ratom/RAtom
+  IAdjustable
+  (-get-value [element]
+    (deref element))
+
+  (-set-value [element value]
+    (reset! element value)))
+
+(defn adjust-proc [events element]
+  (let [out (chan)]
+    (go-loop [start-pos nil
+              start-value nil]
+      (let [[event arg] (<! events)]
+        (case event
+          :start-drag
+          (do
+            (>! out [event arg])
+            (recur arg (-get-value element)))
+
+          :drag
+          (do
+            (when start-pos
+              (let [dx (- arg start-pos)
+                    new-value (adjust start-value dx 1)]
+                (-set-value element new-value)))
+            (recur start-pos start-value))
+
+          :stop-drag
+          (do
+            (>! out [event arg])
+            (recur nil start-value)))))
+
+    out))
 
 (defn adjustable-split [data distance-km]
-  (let [last-valid (r/atom (:pace @data))
-        start (r/atom {})
-        step 1]
+  (let [d (r/atom {:minutes 1 :seconds 23})
+        events (chan 1 (comp
+                         mouse-events
+                         (filter some?)))
+        handler (fn [e]
+                  (.preventDefault e)
+                  (put! events e))
+
+        out (adjust-proc events d)]
+
+    (go-loop []
+      (let [[event arg] (<! out)]
+        (case event
+          :start-drag
+          (doto js/document
+            (.addEventListener "mousemove" handler)
+            (.addEventListener "mouseup" handler))
+
+          :stop-drag
+          (doto js/document
+            (.removeEventListener "mousemove" handler)
+            (.removeEventListener "mouseup" handler)))
+
+        (recur)))
 
     (fn [data distance-km]
-      ; Remember the last valid value
-      (when-let [p (:pace @data)]
-        (reset! last-valid p))
-
       [:span
-       {:on-mouse-down
-        (fn [e]
-          (.preventDefault e)
-          (swap! start assoc :value (:pace @data)
-                             :x (.-clientX e))
-          (let [document (.. e -target -ownerDocument)
-                handler (mouse-move start step data)]
-            (.addEventListener document "mousemove" handler)
-            (.addEventListener document "mouseup" #(.removeEventListener document "mousemove" handler))))
-
-        :on-touch-start
-        (fn [e]
-          (.preventDefault e)
-          (swap! start assoc :value (:pace @data)
-                             :x (.-clientX (first (.-changedTouches e))))
-          (let [document (.. e -target -ownerDocument)
-                handler (touch-move start step data)]
-            (.addEventListener document "touchmove" handler)
-            (.addEventListener document "touchend" #(.removeEventListener document "touchmove" handler))
-            (.addEventListener document "touchcancel" #(.removeEventListener document "touchmove" handler))))}
-
-       (show-time (* distance-km (pace->seconds @last-valid)))])))
+        {:on-mouse-down  handler
+         :on-mouse-leave handler}
+        (show-time (* distance-km (pace->seconds @d)))])))
 
 ; UI components
 (defn pace-input [input]
@@ -145,7 +181,7 @@
       [(if valid? :input.input :input.input.is-danger)
        {:id "pace"
         :type "text"
-        :tabindex 0
+        :tabIndex 0
         :value (:raw @input)
         :placeholder (show-pace initial-pace)
         :on-change
@@ -207,4 +243,12 @@
   (require '[shadow.cljs.devtools.api :as shadow])
   (shadow/repl :app)
   ; Exit the CLJS session
-  :cljs/quit)
+  :cljs/quit
+
+  ; Test code
+  (def test-events (chan 1))
+  (def test-c (adjust-proc test-events nil))
+
+  (put! test-events [:start-drag 0])
+  (put! test-events [:drag 10])
+  (take! test-c prn))

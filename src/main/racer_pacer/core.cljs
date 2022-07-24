@@ -1,5 +1,5 @@
 (ns racer-pacer.core
-  (:require [cljs.core.async :refer [go-loop >! <! chan put! take! close! timeout]]
+  (:require [cljs.core.async :refer [go go-loop >! <! chan put! take!]]
             [goog.dom :as gdom]
             [reagent.core :as r]
             [reagent.dom :as rdom]
@@ -66,21 +66,6 @@
 ; 1. Event stream processing
 ; 2. Event stream coordination
 ; 3. Interface representation)
-
-(defn mouse-move [start step data]
-  (fn [e]
-    (let [dx (- (.-clientX e) (@start :x))
-          value (@start :value)
-          new-pace (adjust value dx step)]
-      (swap! data assoc :raw (show-pace new-pace) :pace new-pace))))
-
-(defn touch-move [start step data]
-  (fn [e]
-    (let [touches (.-changedTouches e)
-          dx (- (.-clientX (first touches)) (@start :x))
-          value (@start :value)
-          new-pace (adjust value dx step)]
-      (swap! data assoc :raw (show-pace new-pace) :pace new-pace))))
 
 ; Process protocol
 ;   [:start-drag [x y]]
@@ -152,25 +137,23 @@
 
         out (adjust-proc events d)]
 
-    (go-loop []
-      (let [[event arg] (<! out)]
-        (case event
-          :start-drag
-          (doto js/document
-            (.addEventListener "mousemove" handler)
-            (.addEventListener "mouseup" handler))
+    (go
+      (while true
+        (let [[event arg] (<! out)]
+          (case event
+            :start-drag
+            (doto js/document
+              (.addEventListener "mousemove" handler)
+              (.addEventListener "mouseup" handler))
 
-          :stop-drag
-          (doto js/document
-            (.removeEventListener "mousemove" handler)
-            (.removeEventListener "mouseup" handler)))
-
-        (recur)))
+            :stop-drag
+            (doto js/document
+              (.removeEventListener "mousemove" handler)
+              (.removeEventListener "mouseup" handler))))))
 
     (fn [data distance-km]
       [:span
-        {:on-mouse-down  handler
-         :on-mouse-leave handler}
+        {:on-mouse-down  handler}
         (show-time (* distance-km (pace->seconds @d)))])))
 
 ; UI components

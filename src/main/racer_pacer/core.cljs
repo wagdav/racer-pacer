@@ -61,18 +61,10 @@
       (* step)
       seconds->pace))
 
-(adjust {:minutes 4 :seconds 13} -100 1)
-
-; 1. Event stream processing
-; 2. Event stream coordination
-; 3. Interface representation)
-
 ; Process protocol
 ;   [:start-drag [x y]]
 ;   [:drag  [x y]]
 ;   [:stop-drag]
-;   [:set value]
-
 (def mouse-events
    (map (fn [e]
           ({"mousedown"  [:start-drag (.-clientX e)]
@@ -100,46 +92,47 @@
   (-set-value [element value]
     (reset! element value)))
 
-(defn adjust-proc [events element]
-  (let [out (chan)]
-    (go-loop [start-pos nil
-              start-value nil]
-      (let [[event arg] (<! events)]
-        (case event
-          :start-drag
-          (do
-            (>! out [event arg])
-            (recur arg (-get-value element)))
+(defn adjust-proc
+  ([events element]
+   (adjust-proc events element (chan)))
 
-          :drag
-          (do
-            (when start-pos
-              (let [dx (- arg start-pos)
-                    new-value (adjust start-value dx 1)]
-                (-set-value element new-value)))
-            (recur start-pos start-value))
+  ([events element out]
+   (go-loop [start-pos nil
+             start-value nil]
+     (let [[event arg] (<! events)]
+       (case event
+         :start-drag
+         (do
+           (>! out [event arg])
+           (recur arg (-get-value element)))
 
-          :stop-drag
-          (do
-            (>! out [event arg])
-            (recur nil start-value)))))
+         :drag
+         (do
+           (when start-pos
+             (let [dx (- arg start-pos)
+                   new-value (adjust start-value dx 1)]
+               (-set-value element new-value)))
+           (recur start-pos start-value))
 
-    out))
+         :stop-drag
+         (do
+           (>! out [event arg])
+           (recur nil start-value)))))
+
+   out))
 
 (defn adjustable-split [data distance-km]
-  (let [d (r/atom {:minutes 1 :seconds 23})
-        events (chan 1 (comp
-                         mouse-events
-                         (filter some?)))
+  (let [events (chan 1 (comp mouse-events
+                             (filter some?)))
         handler (fn [e]
                   (.preventDefault e)
                   (put! events e))
 
-        out (adjust-proc events d)]
+        out (adjust-proc events data)]
 
     (go
       (while true
-        (let [[event arg] (<! out)]
+        (let [[event _arg] (<! out)]
           (case event
             :start-drag
             (doto js/document
@@ -154,28 +147,33 @@
     (fn [data distance-km]
       [:span
         {:on-mouse-down  handler}
-        (show-time (* distance-km (pace->seconds @d)))])))
+        (show-time (* distance-km (pace->seconds @data)))])))
 
 ; UI components
-(defn pace-input [input]
-  (let [valid? (:pace @input)]
-    [:div.field
-      [:label.label {:for "pace"} "Pace"]
-      [(if valid? :input.input :input.input.is-danger)
-       {:id "pace"
-        :type "text"
-        :tabIndex 0
-        :value (:raw @input)
-        :placeholder (show-pace initial-pace)
-        :on-change
-        (fn [event]
-          (let [raw (.. event -target -value)
-                pace (parse-pace raw)]
-            (reset! input (cond-> {:raw raw}
-                                  pace (assoc :pace pace)))))}]
-      (if valid?
-        [:p.help "Reference pace (min/km)"]
-        [:p.help.is-danger "Should be minutes:seconds. For example 4:45."])]))
+(defn pace-input [pace]
+  (let [input-value (r/atom (show-pace @pace))]
+    (add-watch pace :when--changes
+               (fn [_ _ _ new-val] (reset! input-value (show-pace new-val))))
+    (fn [pace]
+      (let [valid? (parse-pace @input-value)]
+        [:div.field
+          [:label.label {:for "pace"} "Pace"]
+          [(if valid? :input.input :input.input.is-danger)
+           {:id "pace"
+            :type "text"
+            :tabIndex 0
+            :value @input-value
+            :placeholder (show-pace initial-pace)
+            :on-change
+            (fn [event]
+              (let [new-value (.. event -target -value)]
+                (reset! input-value new-value)
+                (when-let [new-pace (parse-pace new-value)]
+                  (reset! pace new-pace))))}]
+
+          (if valid?
+            [:p.help "Reference pace (min/km)"]
+            [:p.help.is-danger "Should be minutes:seconds. For example 4:45."])]))))
 
 (defn split-times [pace]
   [:table.table.is-striped.is-fullwidth
@@ -193,8 +191,7 @@
         [:td>abbr {:title "Drag to adjust"}
           [adjustable-split pace (split :km)]]])]])
 
-(defonce pace-data (r/atom {:pace initial-pace
-                            :raw (show-pace initial-pace)}))
+(defonce pace-data (r/atom initial-pace))
 
 (defn main []
   [:<>
@@ -226,12 +223,4 @@
   (require '[shadow.cljs.devtools.api :as shadow])
   (shadow/repl :app)
   ; Exit the CLJS session
-  :cljs/quit
-
-  ; Test code
-  (def test-events (chan 1))
-  (def test-c (adjust-proc test-events nil))
-
-  (put! test-events [:start-drag 0])
-  (put! test-events [:drag 10])
-  (take! test-c prn))
+  :cljs/quit)

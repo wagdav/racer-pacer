@@ -1,5 +1,6 @@
 (ns racer-pacer.core
-  (:require [goog.dom :as gdom]
+  (:require [cljs.core.async :as async]
+            [goog.dom :as gdom]
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [goog.string :as gstring]
@@ -60,77 +61,120 @@
       (* step)
       seconds->pace))
 
-(adjust {:minutes 4 :seconds 13} -100 1)
+; Process protocol
+;   {:op :start-drag :x <x-coordinate>}
+;   {:op :drag       :x <x-coordinate>}
+;   {:op :stop-drag}}
+(defn mouse-events [e]
+  (case (.-type e)
+   "mousedown"  {:op :start-drag
+                 :x (.-clientX e)}
+   "mousemove"  {:op :drag
+                 :x (.-clientX e)}
+   "mouseup"    {:op :stop-drag}
+   e))
 
-(defn mouse-move [start step data]
-  (fn [e]
-    (let [dx (- (.-clientX e) (@start :x))
-          value (@start :value)
-          new-pace (adjust value dx step)]
-      (swap! data assoc :raw (show-pace new-pace) :pace new-pace))))
+(defn touch-events [e]
+  (case (.-type e)
+    "touchstart"  {:op :start-drag
+                   :x  (.-clientX (first (.-changedTouches e)))}
+    "touchmove"   {:op :drag
+                   :x (.-clientX (first (.-changedTouches e)))}
+    "touchend"    {:op :stop-drag}
+    "touchcancel" {:op :stop-drag}
+    e))
 
-(defn touch-move [start step data]
-  (fn [e]
-    (let [touches (.-changedTouches e)
-          dx (- (.-clientX (first touches)) (@start :x))
-          value (@start :value)
-          new-pace (adjust value dx step)]
-      (swap! data assoc :raw (show-pace new-pace) :pace new-pace))))
+(defprotocol IAdjustable
+  (-get-value [element])
+  (-set-value [element value]))
+
+(defn adjust-proc
+  ([element events hooks]
+   (async/go-loop [start-pos 0
+                   start-value (-get-value element)]
+     (let [{op :op :as event} (async/<! events)
+           hook (get hooks op (constantly nil))]
+       (hook)
+       (case op
+         :start-drag
+         (recur (:x event) (-get-value element))
+
+         :drag
+         (let [dx (- (:x event) start-pos)
+               new-value (adjust start-value dx 1)]
+           (-set-value element new-value)
+           (recur start-pos start-value))
+
+         :stop-drag
+         (recur nil start-value))))))
+
+; Implementation with React/Reagent
+(extend-type reagent.ratom/RAtom
+  IAdjustable
+  (-get-value [element]
+    (deref element))
+
+  (-set-value [element value]
+    (reset! element value)))
 
 (defn adjustable-split [data distance-km]
-  (let [last-valid (r/atom (:pace @data))
-        start (r/atom {})
-        step 1]
+  (let [events (async/chan 1 (comp (map mouse-events)
+                                   (map touch-events)
+                                   (filter :op)))
+        handler (fn [e]
+                  (.preventDefault e)
+                  (async/put! events e))
+
+        hooks {:start-drag
+               #(doto js/document
+                  (.addEventListener "mousemove" handler)
+                  (.addEventListener "mouseup" handler)
+                  (.addEventListener "touchmove" handler)
+                  (.addEventListener "touchend" handler)
+                  (.addEventListener "touchcancel" handler))
+
+               :stop-drag
+               #(doto js/document
+                  (.removeEventListener "mousemove" handler)
+                  (.removeEventListener "mouseup" handler)
+                  (.removeEventListener "touchmove" handler)
+                  (.removeEventListener "touchend" handler)
+                  (.removeEventListener "touchcancel" handler))}]
+
+    (adjust-proc data events hooks)
 
     (fn [data distance-km]
-      ; Remember the last valid value
-      (when-let [p (:pace @data)]
-        (reset! last-valid p))
-
       [:span
-       {:on-mouse-down
-        (fn [e]
-          (.preventDefault e)
-          (swap! start assoc :value (:pace @data)
-                             :x (.-clientX e))
-          (let [document (.. e -target -ownerDocument)
-                handler (mouse-move start step data)]
-            (.addEventListener document "mousemove" handler)
-            (.addEventListener document "mouseup" #(.removeEventListener document "mousemove" handler))))
-
-        :on-touch-start
-        (fn [e]
-          (.preventDefault e)
-          (swap! start assoc :value (:pace @data)
-                             :x (.-clientX (first (.-changedTouches e))))
-          (let [document (.. e -target -ownerDocument)
-                handler (touch-move start step data)]
-            (.addEventListener document "touchmove" handler)
-            (.addEventListener document "touchend" #(.removeEventListener document "touchmove" handler))
-            (.addEventListener document "touchcancel" #(.removeEventListener document "touchmove" handler))))}
-
-       (show-time (* distance-km (pace->seconds @last-valid)))])))
+        {:on-mouse-down  handler
+         :on-touch-start handler}
+        (show-time (* distance-km (pace->seconds @data)))])))
 
 ; UI components
-(defn pace-input [input]
-  (let [valid? (:pace @input)]
-    [:div.field
-      [:label.label {:for "pace"} "Pace"]
-      [(if valid? :input.input :input.input.is-danger)
-       {:id "pace"
-        :type "text"
-        :tabindex 0
-        :value (:raw @input)
-        :placeholder (show-pace initial-pace)
-        :on-change
-        (fn [event]
-          (let [raw (.. event -target -value)
-                pace (parse-pace raw)]
-            (reset! input (cond-> {:raw raw}
-                                  pace (assoc :pace pace)))))}]
-      (if valid?
-        [:p.help "Reference pace (min/km)"]
-        [:p.help.is-danger "Should be minutes:seconds. For example 4:45."])]))
+(defn pace-input [reference-pace]
+  (let [input-value (r/atom (show-pace @reference-pace))]
+    (add-watch reference-pace
+               :changed
+               #(reset! input-value (show-pace %4)))
+    (fn [_]
+      (let [valid? (parse-pace @input-value)]
+        [:div.field
+          [:label.label {:for "pace"} "Pace"]
+          [(if valid? :input.input :input.input.is-danger)
+           {:id "pace"
+            :type "text"
+            :tabIndex 0
+            :value @input-value
+            :placeholder (show-pace initial-pace)
+            :on-change
+            (fn [event]
+              (let [new-value (.. event -target -value)]
+                (reset! input-value new-value)
+                (when-let [new-pace (parse-pace new-value)]
+                  (reset! reference-pace new-pace))))}]
+
+          (if valid?
+            [:p.help "Reference pace (min/km)"]
+            [:p.help.is-danger "Should be minutes:seconds. For example 4:45."])]))))
 
 (defn split-times [pace]
   [:table.table.is-striped.is-fullwidth
@@ -148,8 +192,7 @@
         [:td>abbr {:title "Drag to adjust"}
           [adjustable-split pace (split :km)]]])]])
 
-(defonce pace-data (r/atom {:pace initial-pace
-                            :raw (show-pace initial-pace)}))
+(defonce pace-data (r/atom initial-pace))
 
 (defn main []
   [:<>

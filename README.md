@@ -15,3 +15,8 @@ Update dependencies
 ```
 nix develop --command clj2nix deps.edn deps.nix
 ```
+
+## Acknowledgements
+
+I modeled the interactive behavior after [Bret Victor's reactive
+documents](http://worrydream.com/Tangle/).

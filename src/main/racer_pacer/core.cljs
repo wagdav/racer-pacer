@@ -88,25 +88,21 @@
   (-get-value [element])
   (-set-value [element value]))
 
-(defn adjust-proc
-  ([element events hooks]
-   (async/go-loop [start-pos 0
-                   start-value (-get-value element)]
-     (let [{op :op :as event} (async/<! events)
-           hook (get hooks op (constantly nil))]
-       (hook)
-       (case op
-         :start-drag
-         (recur (:x event) (-get-value element))
+(defn adjust-proc [element events]
+ (async/go-loop [start-pos 0
+                 start-value (-get-value element)]
+   (let [{op :op :as event} (async/<! events)]
+     (case op
+       :start-drag
+       (recur (:x event) (-get-value element))
 
-         :drag
-         (let [dx (- (:x event) start-pos)
-               new-value (adjust start-value dx 1)]
-           (-set-value element new-value)
-           (recur start-pos start-value))
+       :drag
+       (let [dx (- (:x event) start-pos)
+             new-value (adjust start-value dx 1)]
+         (-set-value element new-value)
+         (recur start-pos start-value))
 
-         :stop-drag
-         (recur nil start-value))))))
+       :stop-drag))))
 
 ; Implementation with React/Reagent
 (extend-type reagent.ratom/RAtom
@@ -117,6 +113,24 @@
   (-set-value [element value]
     (reset! element value)))
 
+(defn handle-listeners [events handler]
+  (async/go-loop []
+    (let [{op :op} (async/<! events)
+          event-types ["mousemove" "mouseup"
+                       "touchmove" "touchend" "touchcancel"]]
+      (case op
+        :start-drag
+        (do
+          (doseq [event-type event-types]
+            (.addEventListener js/document event-type handler))
+          (recur))
+
+        :stop-drag
+        (doseq [event-type event-types]
+          (.removeEventListener js/document event-type handler))
+
+        (recur)))))
+
 (defn adjustable-split [data distance-km]
   (let [events (async/chan 1 (comp (map mouse-events)
                                    (map touch-events)
@@ -125,28 +139,17 @@
                   (.preventDefault e)
                   (async/put! events e))
 
-        hooks {:start-drag
-               #(doto js/document
-                  (.addEventListener "mousemove" handler)
-                  (.addEventListener "mouseup" handler)
-                  (.addEventListener "touchmove" handler)
-                  (.addEventListener "touchend" handler)
-                  (.addEventListener "touchcancel" handler))
-
-               :stop-drag
-               #(doto js/document
-                  (.removeEventListener "mousemove" handler)
-                  (.removeEventListener "mouseup" handler)
-                  (.removeEventListener "touchmove" handler)
-                  (.removeEventListener "touchend" handler)
-                  (.removeEventListener "touchcancel" handler))}]
-
-    (adjust-proc data events hooks)
+        start-procs (fn [e]
+                      (handler e)
+                      (let [m (async/mult events)]
+                        (adjust-proc data (async/tap m (async/chan)))
+                        (handle-listeners (async/tap m (async/chan)) handler)))]
 
     (fn [data distance-km]
       [:span
-        {:on-mouse-down  handler
-         :on-touch-start handler}
+        {:on-mouse-down start-procs
+         :on-touch-start start-procs}
+
         (show-time (* distance-km (pace->seconds @data)))])))
 
 ; UI components

@@ -51,7 +51,8 @@
 
           buildPhase = ''
             export HOME=$PWD
-            clojure -Scp ${classpath}:src/main -M:shadow-cljs release app
+            clojure -Scp ${classpath}:src/main -M:shadow-cljs release app \
+              --config-merge '{:closure-defines {racer-pacer.core/revision "${self.rev or "dirty"}"}}'
           '';
 
           installPhase = ''

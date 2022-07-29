@@ -7,6 +7,8 @@
             [goog.string.format]
             [clojure.spec.alpha :as s]))
 
+(goog-define ^string revision "main")
+
 (s/def :pace/min-per-km (s/and string? #(re-matches #"[1-5]?[0-9]:[0-5][0-9]" %)))
 
 (def splits
@@ -197,6 +199,8 @@
 
 (defonce pace-data (r/atom initial-pace))
 
+(def github-url "https://github.com/wagdav/racer-pacer")
+
 (defn main []
   [:<>
     [:section.section
@@ -211,8 +215,10 @@
         [:p
           "This is an experiment written in "
           [:a {:href "https://clojurescript.org"} "ClojureScript"] ". "
-          "The source code is available on "
-          [:a {:href "https://github.com/wagdav/racer-pacer"} "GitHub"] "."]]]])
+          "The source code is available on " [:a {:href github-url} "GitHub"] "."]
+        [:p.has-text-weight-light.is-size-7
+          "Revision: "
+          [:a {:href (str github-url "/commit/" revision)} (take 6 revision)]]]]])
 
 (defn mount []
   (rdom/render [main] (gdom/getElement "app")))

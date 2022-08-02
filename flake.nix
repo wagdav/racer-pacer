@@ -19,10 +19,6 @@
   };
 
   outputs = { self, nixpkgs, flake-utils, flake-compat, clj2nix }:
-    let
-      version = "${nixpkgs.lib.substring 0 8 self.lastModifiedDate}.${self.shortRev or "dirty"}";
-    in
-
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
@@ -31,14 +27,14 @@
         classpath = clj-deps.makeClasspaths { };
 
         buildSite = pkgs.stdenv.mkDerivation {
-          name = "racer-pacer-${version}";
+          name = "racer-pacer";
 
           buildInputs = [ pkgs.clojure ];
 
           nodeModules = pkgs.mkYarnModules rec {
             pname = "racer-pacer";
-            name = "racer-pacer-node-modules-${version}";
-            inherit version;
+            name = "racer-pacer-node-modules";
+            version = "1.0.0";
             packageJSON = ./package.json;
             yarnLock = ./yarn.lock;
           };

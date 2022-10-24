@@ -115,25 +115,7 @@
   (-set-value [element value]
     (reset! element value)))
 
-(defn handle-listeners [events handler]
-  (async/go-loop []
-    (let [{op :op} (async/<! events)
-          event-types ["mousemove" "mouseup"
-                       "touchmove" "touchend" "touchcancel"]]
-      (case op
-        :start-drag
-        (do
-          (doseq [event-type event-types]
-            (.addEventListener js/document event-type handler))
-          (recur))
-
-        :stop-drag
-        (doseq [event-type event-types]
-          (.removeEventListener js/document event-type handler))
-
-        (recur)))))
-
-(defn adjustable-split [data distance-km]
+(defn start-adjustment [element start-event]
   (let [events (async/chan 1 (comp (map mouse-events)
                                    (map touch-events)
                                    (filter :op)))
@@ -141,18 +123,25 @@
                   (.preventDefault e)
                   (async/put! events e))
 
-        start-procs (fn [e]
-                      (handler e)
-                      (let [m (async/mult events)]
-                        (adjust-proc data (async/tap m (async/chan)))
-                        (handle-listeners (async/tap m (async/chan)) handler)))]
+        event-types ["mousemove" "mouseup" "touchmove" "touchend" "touchcancel"]]
 
+    (.preventDefault start-event)
+    (handler start-event)
+
+    (async/go
+      (doseq [event-type event-types]
+        (.addEventListener js/document event-type handler))
+      (async/<! (adjust-proc element events))
+      (doseq [event-type event-types]
+        (.removeEventListener js/document event-type handler)))))
+
+(defn adjustable-split [data distance-km]
     (fn [data distance-km]
       [:span
-        {:on-mouse-down start-procs
-         :on-touch-start start-procs}
+        {:on-mouse-down (partial start-adjustment data)
+         :on-touch-start (partial start-adjustment data)}
 
-        (show-time (* distance-km (pace->seconds @data)))])))
+        (show-time (* distance-km (pace->seconds @data)))]))
 
 ; UI components
 (defn pace-input [reference-pace]

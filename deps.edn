@@ -1,14 +1,14 @@
 {:paths ["src/main" "resources"]
  :deps {org.clojure/clojure {:mvn/version "1.11.1"}
-        org.clojure/clojurescript {:mvn/version "1.11.51"}
-        org.clojure/core.async {:mvn/version "1.5.648"}
-        com.google.javascript/closure-compiler-unshaded {:mvn/version "v20220502"}
-        reagent/reagent {:mvn/version "1.1.0"}
-        thheller/shadow-cljs {:mvn/version "2.19.0"}}
+        org.clojure/clojurescript {:mvn/version "1.11.60"}
+        org.clojure/core.async {:mvn/version "1.6.673"}
+        com.google.javascript/closure-compiler-unshaded {:mvn/version "v20230103"}
+        reagent/reagent {:mvn/version "1.1.1"}}
 
  :aliases
  {:shadow-cljs
-  {:main-opts ["-m" "shadow.cljs.devtools.cli"]}
+  {:extra-deps {thheller/shadow-cljs {:mvn/version "2.20.20"}}
+   :main-opts ["-m" "shadow.cljs.devtools.cli"]}
 
   :outdated
   {:deps {com.github.liquidz/antq {:mvn/version "RELEASE"}}

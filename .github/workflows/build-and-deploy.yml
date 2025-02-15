@@ -10,6 +10,8 @@ jobs:
       - uses: actions/checkout@v4.2.2
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
+        with:
+          fetch-depth: 0
       - run: |
           scripts/publish.sh
         env:

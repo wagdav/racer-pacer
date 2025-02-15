@@ -60,8 +60,8 @@ let repos = [
       inherit repos;
       artifactId = "clojure";
       groupId = "org.clojure";
-      sha512 = "1925300a0fe4cc9fc3985910bb04ae65a19ce274dacc5ec76e708cfa87a7952a0a77282b083d0aebb2206afff619af73a57f0d661a3423601586f0829cc7956b";
-      version = "1.11.1";
+      sha512 = "9c36cd8fbe4e45d0c4529c7710f80fae8bdc47bbff64af4012fc5d7e99df7464f54486bc5fab47712efb21e7fecc17eb8fe910cfd2d9dca089c002eaedcff56f";
+      version = "1.12.0";
 
     };
     paths = [ src ];
@@ -99,8 +99,8 @@ let repos = [
       inherit repos;
       artifactId = "tools.analyzer";
       groupId = "org.clojure";
-      sha512 = "c51752a714848247b05c6f98b54276b4fe8fd44b3d970070b0f30cd755ac6656030fd8943a1ffd08279af8eeff160365be47791e48f05ac9cc2488b6e2dfe504";
-      version = "1.1.0";
+      sha512 = "a99d68868959c7eef901f57dfb2069cc8be9313ecf67c7275eb2291231e344a3d7b8a184ede38780223acee51b9381897696912a02de58242c08164542c47830";
+      version = "1.2.0";
 
     };
     paths = [ src ];
@@ -138,8 +138,8 @@ let repos = [
       inherit repos;
       artifactId = "core.specs.alpha";
       groupId = "org.clojure";
-      sha512 = "f521f95b362a47bb35f7c85528c34537f905fb3dd24f2284201e445635a0df701b35d8419d53c6507cc78d3717c1f83cda35ea4c82abd8943cd2ab3de3fcad70";
-      version = "0.2.62";
+      sha512 = "d186fe9ac480ab7be989c6174d3931d1530856957177b1ee2794cb5ff6c4173467ff34c7e929e1a2b34d4b0e25abd7707f8d572db4c52e43c7218eac8822938f";
+      version = "0.4.74";
 
     };
     paths = [ src ];
@@ -190,8 +190,8 @@ let repos = [
       inherit repos;
       artifactId = "spec.alpha";
       groupId = "org.clojure";
-      sha512 = "ddfe4fa84622abd8ac56e2aa565a56e6bdc0bf330f377ff3e269ddc241bb9dbcac332c13502dfd4c09c2c08fe24d8d2e8cf3d04a1bc819ca5657b4e41feaa7c2";
-      version = "0.3.218";
+      sha512 = "2ac83d13ed607b19c1ca651ea54587bf502f0ee89ca042d0f79711e862ea83dbb5326db05523ede58529a258a3fa018e23363740c67b66c682aaf73260b23fab";
+      version = "0.5.238";
 
     };
     paths = [ src ];
@@ -229,8 +229,8 @@ let repos = [
       inherit repos;
       artifactId = "tools.analyzer.jvm";
       groupId = "org.clojure";
-      sha512 = "36ad50a7a79c47dea16032fc4b927bd7b56b8bedcbd20cc9c1b9c85edede3a455369b8806509b56a48457dcd32e1f708f74228bce2b4492bd6ff6fc4f1219d56";
-      version = "1.2.2";
+      sha512 = "fc8389e0571c8f3f95912c81c2a17fa521dca2bc6988c84ab58a7b4dea3ecc4b31427f43e25b00a8f23e0dd4bb8fcc6a3d82ea14feb5ae554a554aedeb4bb59b";
+      version = "1.3.1";
 
     };
     paths = [ src ];
@@ -307,8 +307,8 @@ let repos = [
       inherit repos;
       artifactId = "google-closure-library";
       groupId = "org.clojure";
-      sha512 = "85e259bd189554659fdcb2f137c7de81a8aac97669b865254c59c713e6a8b79eb4272fa1444b9bfc5d1c8447140daa53aac74cacd21527e6186cf1ec0e776d32";
-      version = "0.0-20211011-0726fdeb";
+      sha512 = "c07c74136c3c1ff9a47e622e313db182efe1fca6af81f9ea00f34d46afc4b3df70108ab271b22a4c473a009c39c04dbd3a0afe32d19495ba5e549530180d3ac4";
+      version = "0.0-20230227-c7c0a541";
 
     };
     paths = [ src ];
@@ -333,8 +333,8 @@ let repos = [
       inherit repos;
       artifactId = "clojurescript";
       groupId = "org.clojure";
-      sha512 = "927a8536a67b4db1cb13d88a972c1d7078700ea22f10ed31bde411ca843f569453af959cfb361963e95658cfea6bbb5acdbe1702bafe9b2043b5fc8f0e0c02f5";
-      version = "1.11.60";
+      sha512 = "2e04b41cfaf5e3e4e8e70af48d79313127e6f8d314aa6c3b565cf11c61bbebdf2dea0fdf395392f870ec01431cce9fb86291fb2554bc1ae6111c97b9332c88db";
+      version = "1.11.132";
 
     };
     paths = [ src ];
@@ -463,8 +463,8 @@ let repos = [
       inherit repos;
       artifactId = "google-closure-library-third-party";
       groupId = "org.clojure";
-      sha512 = "2ceef3cbba119d66a38619dc4309ee9eb5e3cccacae0a50e7f099a8df160e345e1abeaa315285fe0328c6afc842a77f6fa9d3c710745b07ce8d484caca7f47bf";
-      version = "0.0-20211011-0726fdeb";
+      sha512 = "50b06929a74359948ed0bf7e6f7ba65b33d95720370389907151443d9b9852e1581a4db091c528daad07fa8b8dabee891e86c7a3239945995662d81b00f92897";
+      version = "0.0-20230227-c7c0a541";
 
     };
     paths = [ src ];
@@ -554,8 +554,8 @@ let repos = [
       inherit repos;
       artifactId = "reagent";
       groupId = "reagent";
-      sha512 = "44cac4971e5bbdac6e19030f70e2234a628cf000d8c2b59478eea0078175adbfce194a2cd42c9d8ea6842b19c0206ff304abae19e48eb848272c5a3e56823b5a";
-      version = "1.1.1";
+      sha512 = "e23a5fdb2ccc451a60e819c3876428bda3806798e6784cae0a58be2fca4a9f453c3310bf7812f385591df5b075dbddcc6fe1a12bc997072a4b0348df73c710b3";
+      version = "1.3.0";
 
     };
     paths = [ src ];
@@ -749,8 +749,8 @@ let repos = [
       inherit repos;
       artifactId = "tools.reader";
       groupId = "org.clojure";
-      sha512 = "3481259c7a1eac719db2921e60173686726a0c2b65879d51a64d516a37f6120db8ffbb74b8bd273404285d7b25143ab5c7ced37e7c0eaf4ab1e44586ccd3c651";
-      version = "1.3.6";
+      sha512 = "83593a91eef8c86429e388b068bbfd0248087527d9c467784620af10f1cff2d15ebabfde0f6a68434f7c5a6ba91f8042e7bafacd4468ee7cc0a91bad77e73f9e";
+      version = "1.5.0";
 
     };
     paths = [ src ];
@@ -840,8 +840,8 @@ let repos = [
       inherit repos;
       artifactId = "core.memoize";
       groupId = "org.clojure";
-      sha512 = "67196537084b7cc34a01454d2a3b72de3fddce081b72d7a6dc1592d269a6c2728b79630bd2d52c1bf2d2f903c12add6f23df954c02ef8237f240d7394ccc3dde";
-      version = "1.0.253";
+      sha512 = "9441e7d0d61fb1665929a32464d8bacb5c4e9bbef062eb7fc72e39e7402e0bfd32fda4cf05df0c82c60f06936ba152cb73b42d79993ff146c1084640f4205124";
+      version = "1.1.266";
 
     };
     paths = [ src ];
@@ -853,8 +853,8 @@ let repos = [
       inherit repos;
       artifactId = "data.priority-map";
       groupId = "org.clojure";
-      sha512 = "bb8bc5dbfd3738c36b99a51880ac3f1381d6564e67601549ef5e7ae2b900e53cdcdfb8d0fa4bf32fb8ebc4de89d954bfa3ab7e8a1122bc34ee5073c7c707ac13";
-      version = "1.1.0";
+      sha512 = "b90a9a049c6dc0274286e44bcc52bd231065161612eaff920381f3d41bbb28ae22771831ddd03b32e52d089c83ca8a6df6d1d3044977c287f040aaa713b5dc6d";
+      version = "1.2.0";
 
     };
     paths = [ src ];
@@ -918,8 +918,8 @@ let repos = [
       inherit repos;
       artifactId = "core.cache";
       groupId = "org.clojure";
-      sha512 = "0a07ceffc2fa3a536b23773eefc7ef5e1108913b93c3a5416116a6566de76dd5c218f3fb0cc19415cbaa8843838de310b76282f20bf1fc3467006c9ec373667e";
-      version = "1.0.225";
+      sha512 = "db8044d17fe8f45ced70f38d1b91f95d2bddfaf3512fa53273c50576c6324cb2df72174fce3d9fce1d5b19da7bdd9e7a00f31359472515d554a6d5414016b5c8";
+      version = "1.1.234";
 
     };
     paths = [ src ];
@@ -931,8 +931,8 @@ let repos = [
       inherit repos;
       artifactId = "core.async";
       groupId = "org.clojure";
-      sha512 = "6c80a6ff6fe7ec8503c36a97684e4118ee1b103983b68c8ce21a398661ede02255e4b04a16fbabd112c8d57b7dd28967f6708e8d3461a5a393e019cda7ca4e96";
-      version = "1.6.673";
+      sha512 = "8ccf974ea24f4a40b01e91b156912d9f1438ff2ec98908dd470e26000acb79dad984d4bf7210aef00dd4d61e76e46636d0b40ea9c44a4770646f47f3944b9c2b";
+      version = "1.7.701";
 
     };
     paths = [ src ];

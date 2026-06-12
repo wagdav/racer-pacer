@@ -30,19 +30,7 @@
 
           buildInputs = [ pkgs.clojure ];
 
-          nodeModules = pkgs.mkYarnModules rec {
-            pname = "racer-pacer";
-            name = "racer-pacer-node-modules";
-            version = "1.0.0";
-            packageJSON = ./package.json;
-            yarnLock = ./yarn.lock;
-          };
-
           src = self;
-
-          configurePhase = ''
-            ln -s $nodeModules/node_modules .
-          '';
 
           buildPhase = ''
             export HOME=$PWD
@@ -63,7 +51,6 @@
             clj2nix.defaultPackage.${system}
             clojure
             ghp-import
-            yarn
           ];
         };
 

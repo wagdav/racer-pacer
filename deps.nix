@@ -549,19 +549,6 @@ let repos = [
   }
 
   rec {
-    name = "reagent/reagent";
-    src = fetchMavenArtifact {
-      inherit repos;
-      artifactId = "reagent";
-      groupId = "reagent";
-      sha512 = "e23a5fdb2ccc451a60e819c3876428bda3806798e6784cae0a58be2fca4a9f453c3310bf7812f385591df5b075dbddcc6fe1a12bc997072a4b0348df73c710b3";
-      version = "1.3.0";
-
-    };
-    paths = [ src ];
-  }
-
-  rec {
     name = "msgpack/org.msgpack";
     src = fetchMavenArtifact {
       inherit repos;
@@ -751,6 +738,19 @@ let repos = [
       groupId = "org.clojure";
       sha512 = "83593a91eef8c86429e388b068bbfd0248087527d9c467784620af10f1cff2d15ebabfde0f6a68434f7c5a6ba91f8042e7bafacd4468ee7cc0a91bad77e73f9e";
       version = "1.5.0";
+
+    };
+    paths = [ src ];
+  }
+
+  rec {
+    name = "replicant/no.cjohansen";
+    src = fetchMavenArtifact {
+      inherit repos;
+      artifactId = "replicant";
+      groupId = "no.cjohansen";
+      sha512 = "f71df5042478f2b26c496110dc2082074401305f40ffc78d8225f724a8596242a252477ec4fe8384f2e6681dfbae60d6dd6301f0f71cd5f6ff4bebe498904742";
+      version = "2025.12.1";
 
     };
     paths = [ src ];

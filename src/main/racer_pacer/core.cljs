@@ -1,8 +1,7 @@
 (ns racer-pacer.core
   (:require [cljs.core.async :as async]
             [goog.dom :as gdom]
-            [reagent.core :as r]
-            [reagent.dom.client :as rclient]
+            [replicant.dom :as r]
             [goog.string :as gstring]
             [goog.string.format]
             [clojure.spec.alpha :as s]))
@@ -106,14 +105,14 @@
 
        :stop-drag))))
 
-; Implementation with React/Reagent
-(extend-type reagent.ratom/RAtom
+; The adjustable protocol works on the :pace key of the store atom.
+; After each drag update the :input string is synced to the new pace.
+(defrecord PaceAccessor [store]
   IAdjustable
-  (-get-value [element]
-    (deref element))
-
-  (-set-value [element value]
-    (reset! element value)))
+  (-get-value [_]
+    (:pace @store))
+  (-set-value [_ new-pace]
+    (swap! store assoc :pace new-pace :input (show-pace new-pace))))
 
 (defn start-adjustment [element start-event]
   (let [events (async/chan 1 (comp (map mouse-events)
@@ -135,42 +134,35 @@
       (doseq [event-type event-types]
         (.removeEventListener js/document event-type handler)))))
 
-(defn adjustable-split [data distance-km]
-    (fn [data distance-km]
-      [:span
-        {:on-mouse-down (partial start-adjustment data)
-         :on-touch-start (partial start-adjustment data)}
-
-        (show-time (* distance-km (pace->seconds @data)))]))
-
 ; UI components
-(defn pace-input [reference-pace]
-  (let [input-value (r/atom (show-pace @reference-pace))]
-    (add-watch reference-pace
-               :changed
-               #(reset! input-value (show-pace %4)))
-    (fn [_]
-      (let [valid? (parse-pace @input-value)]
-        [:div.field
-          [:label.label {:for "pace"} "Pace"]
-          [(if valid? :input.input :input.input.is-danger)
-           {:id "pace"
-            :type "text"
-            :tabIndex 0
-            :value @input-value
-            :placeholder (show-pace initial-pace)
-            :on-change
-            (fn [event]
-              (let [new-value (.. event -target -value)]
-                (reset! input-value new-value)
-                (when-let [new-pace (parse-pace new-value)]
-                  (reset! reference-pace new-pace))))}]
+(defn adjustable-split [state-atom distance-km]
+  (let [accessor (->PaceAccessor state-atom)]
+    [:span
+      {:on {:mousedown   (partial start-adjustment accessor)
+            :touchstart  (partial start-adjustment accessor)}}
+      (show-time (* distance-km (pace->seconds (:pace @state-atom))))]))
+(defn pace-input [state-atom]
+  (let [{:keys [pace input]} @state-atom
+        valid? (parse-pace input)]
+    [:div.field
+      [:label.label {:for "pace"} "Pace"]
+      [(if valid? :input.input :input.input.is-danger)
+       {:id "pace"
+        :type "text"
+        :tabIndex 0
+        :value input
+        :placeholder (show-pace initial-pace)
+        :on {:change
+             (fn [event]
+               (let [new-input (.. event -target -value)]
+                 (if-let [new-pace (parse-pace new-input)]
+                   (swap! state-atom assoc :pace new-pace :input new-input)
+                   (swap! state-atom assoc :input new-input))))}}]
+      (if valid?
+        [:p.help "Reference pace (min/km)"]
+        [:p.help.is-danger "Should be minutes:seconds. For example 4:45."])]))
 
-          (if valid?
-            [:p.help "Reference pace (min/km)"]
-            [:p.help.is-danger "Should be minutes:seconds. For example 4:45."])]))))
-
-(defn split-times [pace]
+(defn split-times [state-atom]
   [:table.table.is-striped.is-fullwidth
    [:thead
     [:tr
@@ -181,24 +173,26 @@
       ^{:key (:km split)}
       [:tr
         (if-let [url (split :url)]
-          [:td>a {:href url} (or (split :name) (split :km))]
+          [:td [:a {:href url} (or (split :name) (split :km))]]
           [:td (split :km)])
-        [:td>abbr {:title "Drag to adjust"}
-          [adjustable-split pace (split :km)]]])]])
+        [:td [:abbr {:title "Drag to adjust"}
+              (adjustable-split state-atom (split :km))]]])]])
 
-(defonce pace-data (r/atom initial-pace))
+(defonce store
+  (atom {:pace  initial-pace
+         :input (show-pace initial-pace)}))
 
 (def github-url "https://github.com/wagdav/racer-pacer")
 
-(defn main []
-  [:<>
+(defn main-view []
+  (list
     [:section.section
       [:h1.title "Splits calculator"]
       [:div.columns
         [:div.column
-          [pace-input pace-data]]
+          (pace-input store)]
         [:div.column
-          [split-times pace-data]]]]
+          (split-times store)]]]
     [:footer.footer
       [:div.content.has-text-centered
         [:p
@@ -207,15 +201,18 @@
           "The source code is available on " [:a {:href github-url} "GitHub"] "."]
         [:p.has-text-weight-light.is-size-7
           "Revision: "
-          [:a {:href (str github-url "/commit/" revision)} (take 6 revision)]]]]])
+          [:a {:href (str github-url "/commit/" revision)} (subs revision 0 (min 6 (count revision)))]]]]))
 
-(defonce dom-root
-  (rclient/create-root (gdom/getElement "app")))
+(defonce dom-el (gdom/getElement "app"))
+
+(defn render! []
+  (r/render dom-el (main-view)))
 
 (defn ^:dev/after-load start []
-  (rclient/render dom-root [main]))
+  (render!))
 
 (defn init []
+  (add-watch store ::render (fn [_ _ _ _] (render!)))
   (start))
 
 (comment

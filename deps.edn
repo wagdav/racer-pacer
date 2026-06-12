@@ -10,6 +10,10 @@
  {:shadow-cljs
   {:main-opts ["-m" "shadow.cljs.devtools.cli"]}
 
+  :dev
+  {:extra-paths ["portfolio/src"]
+   :extra-deps  {no.cjohansen/portfolio {:mvn/version "2026.03.1"}}}
+
   :outdated
   {:deps {com.github.liquidz/antq {:mvn/version "RELEASE"}}
    :main-opts ["-m" "antq.core"]}}}

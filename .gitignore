@@ -21,3 +21,5 @@ result
 node_modules
 public/js
 .shadow-cljs
+
+portfolio/resources/public/js

@@ -72,8 +72,6 @@
 ;   [:effects/add-drag-listeners]        — attaches document-level move/up listeners
 ;   [:effects/remove-drag-listeners]     — detaches them
 
-(declare nexus)
-
 (def event-types ["mousemove" "mouseup" "touchmove" "touchend" "touchcancel"])
 
 (def nexus-map
@@ -142,51 +140,39 @@
                            [:pace/drag [:event/client-xy]]
                            ("mouseup" "touchend" "touchcancel")
                            [:pace/stop-drag])]))]
-        (swap! store assoc-in [:drag :handler] handler)
+         (swap! store assoc :drag-handler handler)
         (doseq [t event-types]
           (.addEventListener js/document t handler))))
 
     :effects/remove-drag-listeners
     (fn [_ store]
-      (let [handler (get-in @store [:drag :handler])]
+      (let [handler (:drag-handler @store)]
+        (swap! store dissoc :drag-handler)
         (doseq [t event-types]
           (.removeEventListener js/document t handler))))}})
 
 ; UI components
 
+
 (def scrubber-width 200)
 (def scrubber-half  (/ scrubber-width 2))
 
-(defn drag-scrubber
-  "Bret Victor-style scrubber overlay, visible only while dragging.
-   Follows the cursor and shows a number line with a live thumb."
-  [{:keys [start-pos current-pos start-y start-value pace]}]
-  (let [dx      (- current-pos start-pos)
-        dsec    (- (pace->seconds pace) (pace->seconds start-value))
-        thumb-x (-> dx (max (- scrubber-half)) (min scrubber-half) (+ scrubber-half))
-        left-px (- start-pos scrubber-half)
-        top-px  (+ start-y 16)
-        color   (cond (pos? dsec) "#e04040"
-                      (neg? dsec) "#3080e0"
-                      :else       "#888")]
-    [:div {:style {:position       "fixed"
-                   :top            (str top-px "px")
-                   :left           (str left-px "px")
-                   :width          (str scrubber-width "px")
-                   :pointer-events "none"
-                   :z-index        1000}}
-     ; delta label
-     [:div {:style {:text-align  "center"
-                    :font-size   "0.75rem"
-                    :color       color
-                    :line-height "1.4"}}
-      (str (when (pos? dsec) "+") dsec "s")]
-     ; track + thumb
+(defn scrubber-widget
+  "Scrubber track with a labelled thumb.
+   delta: normalised thumb position in [-1, +1].
+   thumb: string displayed inside the thumb."
+  [delta thumb]
+  (let [thumb-x (-> delta (max -1.0) (min 1.0) (+ 1.0) (/ 2.0) (* scrubber-width))
+        color   (cond (pos? delta) "#e04040"
+                      (neg? delta) "#3080e0"
+                      :else        "#888")]
+    [:div {:style {:width       (str scrubber-width "px")
+                   :user-select "none"}}
+     ; track
      [:div {:style {:position      "relative"
                     :height        "6px"
                     :background    "#ddd"
-                    :border-radius "3px"
-                    :margin        "4px 0"}}
+                    :border-radius "3px"}}
       ; origin centre mark
       [:div {:style {:position   "absolute"
                      :left       "50%"
@@ -196,25 +182,30 @@
                      :background "#aaa"
                      :transform  "translateX(-50%)"}}]
       ; thumb
-      [:div {:style {:position      "absolute"
-                     :left          (str thumb-x "px")
-                     :top           "-4px"
-                     :width         "14px"
-                     :height        "14px"
-                     :background    color
-                     :border-radius "50%"
-                     :transform     "translateX(-50%)"
-                     :box-shadow    "0 1px 3px rgba(0,0,0,0.3)"}}]]]))
+      [:div {:style {:position        "absolute"
+                     :left            (str thumb-x "px")
+                     :top             "-8px"
+                     :width           "24px"
+                     :height          "22px"
+                     :background      color
+                     :border-radius   "4px"
+                     :transform       "translateX(-50%)"
+                     :box-shadow      "0 1px 3px rgba(0,0,0,0.3)"
+                     :display         "flex"
+                     :align-items     "center"
+                     :justify-content "center"
+                     :font-size       "0.6rem"
+                     :font-family     "monospace"
+                     :color           "#fff"
+                     :font-weight     "600"}}
+       thumb]]]))
 
 (defn adjustable-split [state distance-km]
-  (let [dragging? (some? (:drag state))]
-    [:span {:style {:cursor "ew-resize"}}
-     [:span
-      {:on {:mousedown  [[:pace/start-drag [:event/client-xy]]]
-            :touchstart [[:pace/start-drag [:event/client-xy]]]}}
-      (show-time (* distance-km (pace->seconds (:pace state))))]
-     (when dragging?
-       (drag-scrubber (assoc (:drag state) :pace (:pace state))))]))
+  [:span {:style {:cursor "ew-resize"}}
+   [:span
+    {:on {:mousedown  [[:pace/start-drag [:event/client-xy]]]
+          :touchstart [[:pace/start-drag [:event/client-xy]]]}}
+    (show-time (* distance-km (pace->seconds (:pace state))))]])
 
 (defn pace-input [state]
   (let [{:keys [input]} state
@@ -256,23 +247,35 @@
 (def github-url "https://github.com/wagdav/racer-pacer")
 
 (defn main-view [state]
-  (list
-    [:section.section
-     [:h1.title "Splits calculator"]
-     [:div.columns
-      [:div.column
-       (pace-input state)]
-      [:div.column
-       (split-times state)]]]
-    [:footer.footer
-     [:div.content.has-text-centered
-      [:p
-       "This is an experiment written in "
-       [:a {:href "https://clojurescript.org"} "ClojureScript"] ". "
-       "The source code is available on " [:a {:href github-url} "GitHub"] "."]
-      [:p.has-text-weight-light.is-size-7
-       "Revision: "
-       [:a {:href (str github-url "/commit/" revision)} (subs revision 0 (min 6 (count revision)))]]]]))
+  (let [drag (:drag state)]
+    (list
+      (when drag
+        (let [{:keys [start-pos start-y current-pos start-value]} drag
+              dx   (- current-pos start-pos)
+              dsec (- (pace->seconds (:pace state)) (pace->seconds start-value))]
+          [:div {:style {:position       "fixed"
+                         :top            (str (+ start-y 16) "px")
+                         :left           (str (- start-pos scrubber-half) "px")
+                         :pointer-events "none"
+                         :z-index        1000}}
+           (scrubber-widget (/ dx 100.0)
+                            (str (when (pos? dsec) "+") dsec "s"))]))
+      [:section.section
+       [:h1.title "Splits calculator"]
+       [:div.columns
+        [:div.column
+         (pace-input state)]
+        [:div.column
+         (split-times state)]]]
+     [:footer.footer
+      [:div.content.has-text-centered
+       [:p
+        "This is an experiment written in "
+        [:a {:href "https://clojurescript.org"} "ClojureScript"] ". "
+        "The source code is available on " [:a {:href github-url} "GitHub"] "."]
+       [:p.has-text-weight-light.is-size-7
+        "Revision: "
+         [:a {:href (str github-url "/commit/" revision)} (subs revision 0 (min 6 (count revision)))]]]])))
 
 (defonce dom-el (gdom/getElement "app"))
 

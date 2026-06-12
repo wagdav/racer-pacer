@@ -1,11 +1,16 @@
-{:deps
- true
+{:deps {:aliases [:dev]}
 
  :dev-http
- {8020 "public"}
+ {8020 ["public"]
+  8021 ["portfolio/resources/public" "classpath:public"]}
 
  :builds
  {:app {:target :browser
         :output-dir "public/js"
         :asset-path "/js"
-        :modules {:main {:init-fn racer_pacer.core/init}}}}}
+        :modules {:main {:init-fn racer_pacer.core/init}}}
+
+  :portfolio {:target     :browser
+              :output-dir "portfolio/resources/public/js"
+              :modules {:scenes {:init-fn portfolio/main}}
+              :portfolio.ui/config {:css-paths ["/css/racer_pacer.css"]}}}}

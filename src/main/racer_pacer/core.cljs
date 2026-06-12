@@ -1,7 +1,8 @@
 (ns racer-pacer.core
-  (:require [cljs.core.async :as async]
+  (:require [clojure.string :as str]
             [goog.dom :as gdom]
             [replicant.dom :as r]
+            [nexus.core :as nexus]
             [goog.string :as gstring]
             [goog.string.format]
             [clojure.spec.alpha :as s]))
@@ -31,7 +32,7 @@
 
 (defn parse-pace [t]
   (when (s/valid? :pace/min-per-km t)
-    (let [[minutes seconds] (clojure.string/split t #":")]
+    (let [[minutes seconds] (str/split t #":")]
       {:minutes (js/parseInt minutes)
        :seconds (js/parseInt seconds)})))
 
@@ -53,166 +54,181 @@
   (let [p (seconds->pace secs)]
     (gstring/format "%d:%02d:%02d" (:hours p) (:minutes p) (:seconds p))))
 
-(defn adjust [value dx step]
+(defn adjust [value dx]
   (-> value
       pace->seconds
-      (+ (* dx step 0.2))
-      (/ step)
+      (+ (* dx 0.2))
       (#(.round js/Math %))
-      (* step)
       seconds->pace))
 
-; Process protocol
-;   {:op :start-drag :x <x-coordinate>}
-;   {:op :drag       :x <x-coordinate>}
-;   {:op :stop-drag}}
-(defn mouse-events [e]
+; Actions
+;   [:pace/start-drag x]  — mousedown/touchstart; seeds drag state
+;   [:pace/drag       x]  — mousemove/touchmove; computes new pace from delta
+;   [:pace/stop-drag]     — mouseup/touchend; clears drag state and listeners
+;   [:pace/set-input  s]  — text input change
+
+; Effects
+;   [:effects/save [path value] ...]     — batched assoc-in on store
+;   [:effects/add-drag-listeners]        — attaches document-level move/up listeners
+;   [:effects/remove-drag-listeners]     — detaches them
+
+(declare nexus)
+
+(def event-types ["mousemove" "mouseup" "touchmove" "touchend" "touchcancel"])
+
+(defn- client-x [e]
   (case (.-type e)
-   "mousedown"  {:op :start-drag
-                 :x (.-clientX e)}
-   "mousemove"  {:op :drag
-                 :x (.-clientX e)}
-   "mouseup"    {:op :stop-drag}
-   e))
+    ("mousedown" "mousemove")
+    (.-clientX e)
+    ("touchstart" "touchmove" "touchend" "touchcancel")
+    (.-clientX (first (.-changedTouches e)))))
 
-(defn touch-events [e]
-  (case (.-type e)
-    "touchstart"  {:op :start-drag
-                   :x  (.-clientX (first (.-changedTouches e)))}
-    "touchmove"   {:op :drag
-                   :x (.-clientX (first (.-changedTouches e)))}
-    "touchend"    {:op :stop-drag}
-    "touchcancel" {:op :stop-drag}
-    e))
+(def nexus-map
+  {:nexus/system->state deref
 
-(defprotocol IAdjustable
-  (-get-value [element])
-  (-set-value [element value]))
+   :nexus/placeholders
+   {:event/client-x
+    (fn [{:replicant/keys [dom-event]}]
+      (client-x dom-event))
 
-(defn adjust-proc [element events]
- (async/go-loop [start-pos 0
-                 start-value (-get-value element)]
-   (let [{op :op :as event} (async/<! events)]
-     (case op
-       :start-drag
-       (recur (:x event) (-get-value element))
+    :event/input-value
+    (fn [{:replicant/keys [dom-event]}]
+      (.. dom-event -target -value))}
 
-       :drag
-       (let [dx (- (:x event) start-pos)
-             new-value (adjust start-value dx 1)]
-         (-set-value element new-value)
-         (recur start-pos start-value))
+   :nexus/actions
+   {:pace/start-drag
+    (fn [state x]
+      [[:effects/prevent-default]
+       [:effects/save [:drag :start-pos]   x]
+       [:effects/save [:drag :start-value] (:pace state)]
+       [:effects/add-drag-listeners]])
 
-       :stop-drag))))
+    :pace/drag
+    (fn [state x]
+      (let [{:keys [start-pos start-value]} (:drag state)
+            new-pace (adjust start-value (- x start-pos))]
+        [[:effects/save [:pace]  new-pace]
+         [:effects/save [:input] (show-pace new-pace)]]))
 
-; The adjustable protocol works on the :pace key of the store atom.
-; After each drag update the :input string is synced to the new pace.
-(defrecord PaceAccessor [store]
-  IAdjustable
-  (-get-value [_]
-    (:pace @store))
-  (-set-value [_ new-pace]
-    (swap! store assoc :pace new-pace :input (show-pace new-pace))))
+    :pace/stop-drag
+    (fn [_state]
+      [[:effects/remove-drag-listeners]
+       [:effects/save [:drag] nil]])
 
-(defn start-adjustment [element start-event]
-  (let [events (async/chan 1 (comp (map mouse-events)
-                                   (map touch-events)
-                                   (filter :op)))
-        handler (fn [e]
-                  (.preventDefault e)
-                  (async/put! events e))
+    :pace/set-input
+    (fn [_state input]
+      (if-let [new-pace (parse-pace input)]
+        [[:effects/save [:pace]  new-pace]
+         [:effects/save [:input] input]]
+        [[:effects/save [:input] input]]))}
 
-        event-types ["mousemove" "mouseup" "touchmove" "touchend" "touchcancel"]]
+   :nexus/effects
+   {:effects/prevent-default
+    (fn [{:keys [dispatch-data]} _store]
+      (some-> (:replicant/dom-event dispatch-data) .preventDefault))
 
-    (.preventDefault start-event)
-    (handler start-event)
+    :effects/save
+    ^:nexus/batch
+    (fn [_ store path-vs]
+      (swap! store (fn [s] (reduce (fn [acc [p v]] (assoc-in acc p v)) s path-vs))))
 
-    (async/go
-      (doseq [event-type event-types]
-        (.addEventListener js/document event-type handler))
-      (async/<! (adjust-proc element events))
-      (doseq [event-type event-types]
-        (.removeEventListener js/document event-type handler)))))
+    :effects/add-drag-listeners
+    (fn [_ store]
+      (let [handler (fn [e]
+                      (.preventDefault e)
+                      (nexus/dispatch nexus-map store {:replicant/dom-event e}
+                        [(case (.-type e)
+                           ("mousemove" "touchmove")
+                           [:pace/drag [:event/client-x]]
+                           ("mouseup" "touchend" "touchcancel")
+                           [:pace/stop-drag])]))]
+        (swap! store assoc-in [:drag :handler] handler)
+        (doseq [t event-types]
+          (.addEventListener js/document t handler))))
+
+    :effects/remove-drag-listeners
+    (fn [_ store]
+      (let [handler (get-in @store [:drag :handler])]
+        (doseq [t event-types]
+          (.removeEventListener js/document t handler))))}})
 
 ; UI components
-(defn adjustable-split [state-atom distance-km]
-  (let [accessor (->PaceAccessor state-atom)]
-    [:span
-      {:on {:mousedown   (partial start-adjustment accessor)
-            :touchstart  (partial start-adjustment accessor)}}
-      (show-time (* distance-km (pace->seconds (:pace @state-atom))))]))
-(defn pace-input [state-atom]
-  (let [{:keys [pace input]} @state-atom
+
+(defn adjustable-split [state distance-km]
+  [:span
+   {:on {:mousedown  [[:pace/start-drag [:event/client-x]]]
+         :touchstart [[:pace/start-drag [:event/client-x]]]}}
+   (show-time (* distance-km (pace->seconds (:pace state))))])
+
+(defn pace-input [state]
+  (let [{:keys [input]} state
         valid? (parse-pace input)]
     [:div.field
-      [:label.label {:for "pace"} "Pace"]
-      [(if valid? :input.input :input.input.is-danger)
-       {:id "pace"
-        :type "text"
-        :tabIndex 0
-        :value input
-        :placeholder (show-pace initial-pace)
-        :on {:change
-             (fn [event]
-               (let [new-input (.. event -target -value)]
-                 (if-let [new-pace (parse-pace new-input)]
-                   (swap! state-atom assoc :pace new-pace :input new-input)
-                   (swap! state-atom assoc :input new-input))))}}]
-      (if valid?
-        [:p.help "Reference pace (min/km)"]
-        [:p.help.is-danger "Should be minutes:seconds. For example 4:45."])]))
+     [:label.label {:for "pace"} "Pace"]
+     [(if valid? :input.input :input.input.is-danger)
+      {:id "pace"
+       :type "text"
+       :tabIndex 0
+       :value input
+       :placeholder (show-pace initial-pace)
+       :on {:change [[:pace/set-input [:event/input-value]]]}}]
+     (if valid?
+       [:p.help "Reference pace (min/km)"]
+       [:p.help.is-danger "Should be minutes:seconds. For example 4:45."])]))
 
-(defn split-times [state-atom]
+(defn split-times [state]
   [:table.table.is-striped.is-fullwidth
    [:thead
     [:tr
-      [:th "Km"]
-      [:th "Split"]]]
+     [:th "Km"]
+     [:th "Split"]]]
    [:tbody
     (for [split splits]
       ^{:key (:km split)}
       [:tr
-        (if-let [url (split :url)]
-          [:td [:a {:href url} (or (split :name) (split :km))]]
-          [:td (split :km)])
-        [:td [:abbr {:title "Drag to adjust"}
-              (adjustable-split state-atom (split :km))]]])]])
+       (if-let [url (split :url)]
+         [:td [:a {:href url} (or (split :name) (split :km))]]
+         [:td (split :km)])
+       [:td [:abbr {:title "Drag to adjust"}
+             (adjustable-split state (split :km))]]])]])
 
 (defonce store
   (atom {:pace  initial-pace
-         :input (show-pace initial-pace)}))
+         :input (show-pace initial-pace)
+         :drag  nil}))
 
 (def github-url "https://github.com/wagdav/racer-pacer")
 
-(defn main-view []
+(defn main-view [state]
   (list
     [:section.section
-      [:h1.title "Splits calculator"]
-      [:div.columns
-        [:div.column
-          (pace-input store)]
-        [:div.column
-          (split-times store)]]]
+     [:h1.title "Splits calculator"]
+     [:div.columns
+      [:div.column
+       (pace-input state)]
+      [:div.column
+       (split-times state)]]]
     [:footer.footer
-      [:div.content.has-text-centered
-        [:p
-          "This is an experiment written in "
-          [:a {:href "https://clojurescript.org"} "ClojureScript"] ". "
-          "The source code is available on " [:a {:href github-url} "GitHub"] "."]
-        [:p.has-text-weight-light.is-size-7
-          "Revision: "
-          [:a {:href (str github-url "/commit/" revision)} (subs revision 0 (min 6 (count revision)))]]]]))
+     [:div.content.has-text-centered
+      [:p
+       "This is an experiment written in "
+       [:a {:href "https://clojurescript.org"} "ClojureScript"] ". "
+       "The source code is available on " [:a {:href github-url} "GitHub"] "."]
+      [:p.has-text-weight-light.is-size-7
+       "Revision: "
+       [:a {:href (str github-url "/commit/" revision)} (subs revision 0 (min 6 (count revision)))]]]]))
 
 (defonce dom-el (gdom/getElement "app"))
 
-(defn render! []
-  (r/render dom-el (main-view)))
+(defn render! [state]
+  (r/render dom-el (main-view state)))
 
 (defn ^:dev/after-load start []
-  (render!))
+  (render! @store))
 
 (defn init []
-  (add-watch store ::render (fn [_ _ _ _] (render!)))
+  (r/set-dispatch! #(nexus/dispatch nexus-map store %1 %2))
+  (add-watch store ::render (fn [_ _ _ state] (render! state)))
   (start))
 
 (comment

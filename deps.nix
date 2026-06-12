@@ -99,8 +99,8 @@ let repos = [
       inherit repos;
       artifactId = "tools.analyzer";
       groupId = "org.clojure";
-      sha512 = "a99d68868959c7eef901f57dfb2069cc8be9313ecf67c7275eb2291231e344a3d7b8a184ede38780223acee51b9381897696912a02de58242c08164542c47830";
-      version = "1.2.0";
+      sha512 = "c51752a714848247b05c6f98b54276b4fe8fd44b3d970070b0f30cd755ac6656030fd8943a1ffd08279af8eeff160365be47791e48f05ac9cc2488b6e2dfe504";
+      version = "1.1.0";
 
     };
     paths = [ src ];
@@ -229,8 +229,8 @@ let repos = [
       inherit repos;
       artifactId = "tools.analyzer.jvm";
       groupId = "org.clojure";
-      sha512 = "fc8389e0571c8f3f95912c81c2a17fa521dca2bc6988c84ab58a7b4dea3ecc4b31427f43e25b00a8f23e0dd4bb8fcc6a3d82ea14feb5ae554a554aedeb4bb59b";
-      version = "1.3.1";
+      sha512 = "36ad50a7a79c47dea16032fc4b927bd7b56b8bedcbd20cc9c1b9c85edede3a455369b8806509b56a48457dcd32e1f708f74228bce2b4492bd6ff6fc4f1219d56";
+      version = "1.2.2";
 
     };
     paths = [ src ];
@@ -283,6 +283,19 @@ let repos = [
       groupId = "org.jspecify";
       sha512 = "28c0dfe68047686dd0072ca41c3c14aacda291dd70bb2a743dad729c4123e659157fd08d27e903bd501dfcd5e27f8d376204a4592b172e75a186ce395ecfe1f2";
       version = "0.2.0";
+
+    };
+    paths = [ src ];
+  }
+
+  rec {
+    name = "nexus/no.cjohansen";
+    src = fetchMavenArtifact {
+      inherit repos;
+      artifactId = "nexus";
+      groupId = "no.cjohansen";
+      sha512 = "026051e80b0b6df52fee494d15e23fa57b2e45ab4f75f66f7c49696236539788bd5a1bd6f792e0ce36073748ccf1d06eacac2a808cc41d0e73bda2bdbef4cc8c";
+      version = "2025.11.1";
 
     };
     paths = [ src ];
@@ -736,8 +749,8 @@ let repos = [
       inherit repos;
       artifactId = "tools.reader";
       groupId = "org.clojure";
-      sha512 = "83593a91eef8c86429e388b068bbfd0248087527d9c467784620af10f1cff2d15ebabfde0f6a68434f7c5a6ba91f8042e7bafacd4468ee7cc0a91bad77e73f9e";
-      version = "1.5.0";
+      sha512 = "3481259c7a1eac719db2921e60173686726a0c2b65879d51a64d516a37f6120db8ffbb74b8bd273404285d7b25143ab5c7ced37e7c0eaf4ab1e44586ccd3c651";
+      version = "1.3.6";
 
     };
     paths = [ src ];
@@ -840,8 +853,8 @@ let repos = [
       inherit repos;
       artifactId = "core.memoize";
       groupId = "org.clojure";
-      sha512 = "9441e7d0d61fb1665929a32464d8bacb5c4e9bbef062eb7fc72e39e7402e0bfd32fda4cf05df0c82c60f06936ba152cb73b42d79993ff146c1084640f4205124";
-      version = "1.1.266";
+      sha512 = "67196537084b7cc34a01454d2a3b72de3fddce081b72d7a6dc1592d269a6c2728b79630bd2d52c1bf2d2f903c12add6f23df954c02ef8237f240d7394ccc3dde";
+      version = "1.0.253";
 
     };
     paths = [ src ];
@@ -853,8 +866,8 @@ let repos = [
       inherit repos;
       artifactId = "data.priority-map";
       groupId = "org.clojure";
-      sha512 = "b90a9a049c6dc0274286e44bcc52bd231065161612eaff920381f3d41bbb28ae22771831ddd03b32e52d089c83ca8a6df6d1d3044977c287f040aaa713b5dc6d";
-      version = "1.2.0";
+      sha512 = "bb8bc5dbfd3738c36b99a51880ac3f1381d6564e67601549ef5e7ae2b900e53cdcdfb8d0fa4bf32fb8ebc4de89d954bfa3ab7e8a1122bc34ee5073c7c707ac13";
+      version = "1.1.0";
 
     };
     paths = [ src ];
@@ -918,8 +931,8 @@ let repos = [
       inherit repos;
       artifactId = "core.cache";
       groupId = "org.clojure";
-      sha512 = "db8044d17fe8f45ced70f38d1b91f95d2bddfaf3512fa53273c50576c6324cb2df72174fce3d9fce1d5b19da7bdd9e7a00f31359472515d554a6d5414016b5c8";
-      version = "1.1.234";
+      sha512 = "0a07ceffc2fa3a536b23773eefc7ef5e1108913b93c3a5416116a6566de76dd5c218f3fb0cc19415cbaa8843838de310b76282f20bf1fc3467006c9ec373667e";
+      version = "1.0.225";
 
     };
     paths = [ src ];
@@ -931,8 +944,8 @@ let repos = [
       inherit repos;
       artifactId = "core.async";
       groupId = "org.clojure";
-      sha512 = "8ccf974ea24f4a40b01e91b156912d9f1438ff2ec98908dd470e26000acb79dad984d4bf7210aef00dd4d61e76e46636d0b40ea9c44a4770646f47f3944b9c2b";
-      version = "1.7.701";
+      sha512 = "160a77da25382d7c257eee56cfe83538620576a331e025a2d672fc26d9f04e606666032395f3c2e26247c782544816a5862348f3a921b1ffffcd309c62ac64f5";
+      version = "1.5.648";
 
     };
     paths = [ src ];

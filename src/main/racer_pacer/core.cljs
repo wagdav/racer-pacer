@@ -76,20 +76,17 @@
 
 (def event-types ["mousemove" "mouseup" "touchmove" "touchend" "touchcancel"])
 
-(defn- client-x [e]
-  (case (.-type e)
-    ("mousedown" "mousemove")
-    (.-clientX e)
-    ("touchstart" "touchmove" "touchend" "touchcancel")
-    (.-clientX (first (.-changedTouches e)))))
-
 (def nexus-map
   {:nexus/system->state deref
 
    :nexus/placeholders
-   {:event/client-x
+   {:event/client-xy
     (fn [{:replicant/keys [dom-event]}]
-      (client-x dom-event))
+      (let [e (case (.-type dom-event)
+                ("touchstart" "touchmove" "touchend" "touchcancel")
+                (first (.-changedTouches dom-event))
+                dom-event)]
+        [(.-clientX e) (.-clientY e)]))
 
     :event/input-value
     (fn [{:replicant/keys [dom-event]}]
@@ -97,17 +94,20 @@
 
    :nexus/actions
    {:pace/start-drag
-    (fn [state x]
+    (fn [state [x y]]
       [[:effects/prevent-default]
        [:effects/save [:drag :start-pos]   x]
+       [:effects/save [:drag :start-y]     y]
+       [:effects/save [:drag :current-pos] x]
        [:effects/save [:drag :start-value] (:pace state)]
        [:effects/add-drag-listeners]])
 
     :pace/drag
-    (fn [state x]
+    (fn [state [x _y]]
       (let [{:keys [start-pos start-value]} (:drag state)
             new-pace (adjust start-value (- x start-pos))]
-        [[:effects/save [:pace]  new-pace]
+        [[:effects/save [:drag :current-pos] x]
+         [:effects/save [:pace]  new-pace]
          [:effects/save [:input] (show-pace new-pace)]]))
 
     :pace/stop-drag
@@ -139,7 +139,7 @@
                       (nexus/dispatch nexus-map store {:replicant/dom-event e}
                         [(case (.-type e)
                            ("mousemove" "touchmove")
-                           [:pace/drag [:event/client-x]]
+                           [:pace/drag [:event/client-xy]]
                            ("mouseup" "touchend" "touchcancel")
                            [:pace/stop-drag])]))]
         (swap! store assoc-in [:drag :handler] handler)
@@ -154,11 +154,67 @@
 
 ; UI components
 
+(def scrubber-width 200)
+(def scrubber-half  (/ scrubber-width 2))
+
+(defn drag-scrubber
+  "Bret Victor-style scrubber overlay, visible only while dragging.
+   Follows the cursor and shows a number line with a live thumb."
+  [{:keys [start-pos current-pos start-y start-value pace]}]
+  (let [dx      (- current-pos start-pos)
+        dsec    (- (pace->seconds pace) (pace->seconds start-value))
+        thumb-x (-> dx (max (- scrubber-half)) (min scrubber-half) (+ scrubber-half))
+        left-px (- start-pos scrubber-half)
+        top-px  (+ start-y 16)
+        color   (cond (pos? dsec) "#e04040"
+                      (neg? dsec) "#3080e0"
+                      :else       "#888")]
+    [:div {:style {:position       "fixed"
+                   :top            (str top-px "px")
+                   :left           (str left-px "px")
+                   :width          (str scrubber-width "px")
+                   :pointer-events "none"
+                   :z-index        1000}}
+     ; delta label
+     [:div {:style {:text-align  "center"
+                    :font-size   "0.75rem"
+                    :color       color
+                    :line-height "1.4"}}
+      (str (when (pos? dsec) "+") dsec "s")]
+     ; track + thumb
+     [:div {:style {:position      "relative"
+                    :height        "6px"
+                    :background    "#ddd"
+                    :border-radius "3px"
+                    :margin        "4px 0"}}
+      ; origin centre mark
+      [:div {:style {:position   "absolute"
+                     :left       "50%"
+                     :top        "-3px"
+                     :width      "2px"
+                     :height     "12px"
+                     :background "#aaa"
+                     :transform  "translateX(-50%)"}}]
+      ; thumb
+      [:div {:style {:position      "absolute"
+                     :left          (str thumb-x "px")
+                     :top           "-4px"
+                     :width         "14px"
+                     :height        "14px"
+                     :background    color
+                     :border-radius "50%"
+                     :transform     "translateX(-50%)"
+                     :box-shadow    "0 1px 3px rgba(0,0,0,0.3)"}}]]]))
+
 (defn adjustable-split [state distance-km]
-  [:span
-   {:on {:mousedown  [[:pace/start-drag [:event/client-x]]]
-         :touchstart [[:pace/start-drag [:event/client-x]]]}}
-   (show-time (* distance-km (pace->seconds (:pace state))))])
+  (let [dragging? (some? (:drag state))]
+    [:span {:style {:cursor "ew-resize"}}
+     [:span
+      {:on {:mousedown  [[:pace/start-drag [:event/client-xy]]]
+            :touchstart [[:pace/start-drag [:event/client-xy]]]}}
+      (show-time (* distance-km (pace->seconds (:pace state))))]
+     (when dragging?
+       (drag-scrubber (assoc (:drag state) :pace (:pace state))))]))
 
 (defn pace-input [state]
   (let [{:keys [input]} state
